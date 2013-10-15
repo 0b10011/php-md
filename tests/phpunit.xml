@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<phpunit
+	colors="true"
+	bootstrap="bootstrap.php"
+>
+	<testsuites>
+		<testsuite name="AllTests">
+			<directory suffix=".test.php">.</directory>
+		</testsuite>
+	</testsuites>
+	
+	<filter>
+		<blacklist>
+			<directory>../vendor</directory>
+			<directory>../tests</directory>
+		</blacklist>
+		<whitelist>
+			<directory suffix=".php">../app</directory>
+		</whitelist>
+	</filter>
+</phpunit>

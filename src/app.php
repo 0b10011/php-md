@@ -44,8 +44,12 @@ class Markdown {
 				$html .= $value;
 			} elseif($type==="startEm"){
 				$html .= "<em>";
+			} elseif($type==="endEm"){
+				$html .= "</em>";
 			} elseif($type==="startStrong"){
 				$html .= "<strong>";
+			} elseif($type==="endStrong"){
+				$html .= "</strong>";
 			} elseif($type==="newline"){
 				$html .= "<br>";
 			} elseif($type==="startParagraph"){
@@ -75,6 +79,7 @@ class Tokenizer {
 		"newLine" => "newLine",
 		"afterNewLine" => "afterNewLine",
 		"startParagraph" => "startParagraph",
+		"afterSpace" => "afterSpace",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -200,6 +205,11 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch===" "){
+			// Ignore
+			return;
+		}
+		
 		$this->backup();
 		$this->state = "mol";
 	}
@@ -225,13 +235,14 @@ class Tokenizer {
 			return;
 		}
 		
-		if($ch===" "&&$this->consume(" ")){
-			if($this->next()==="\n"){
+		if($ch===" "){
+			if($this->consume(" ")&&$this->next()==="\n"){
 				$this->backup(2);
 				$this->state = "newLine";
 				return;
 			}
 			$this->tokens[] = array("character", $ch);
+			$this->state = "afterSpace";
 			return;
 		}
 		
@@ -239,13 +250,32 @@ class Tokenizer {
 			$next = $this->next();
 			if($next==="*"){
 				$this->consume();
-				$this->tokens[] = array("startStrong");
+				$this->tokens[] = array("endStrong");
+				return;
 			}
-			$this->tokens[] = array("startEm", $ch);
+			$this->tokens[] = array("endEm");
 			return;
 		}
 		
 		$this->tokens[] = array("character", $ch);
+	}
+	
+	protected function afterSpace(){
+		$ch = $this->consume();
+		
+		if($ch==="*"){
+			$next = $this->next();
+			if($next==="*"){
+				$this->consume();
+				$this->tokens[] = array("startStrong");
+				return;
+			}
+			$this->tokens[] = array("startEm");
+			return;
+		}
+		
+		$this->backup();
+		$this->state = "mol";
 	}
 }
 

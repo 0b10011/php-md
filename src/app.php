@@ -15,6 +15,8 @@ class Markdown {
 	
 	protected $encoding = "UTF-8";
 	
+	protected $parse_tree = null;
+	
 	public function __construct($text, array $options = null){
 		if($options){
 			$this->setOptions($options);
@@ -34,31 +36,36 @@ class Markdown {
 	}
 	
 	public function toHTML(){
+		return $this->nodeToHTML($this->parse_tree);
+	}
+	
+	protected function nodeToHTML($node = null){
 		$html = "";
 		
-		foreach($this->parse_tree as $parse){
-			$type = array_key_exists(0, $parse) ? $parse[0] : null;
-			$value = array_key_exists(1, $parse) ? $parse[1] : null;
-			
-			if($type==="character"){
-				$html .= $value;
-			} elseif($type==="startEm"){
-				$html .= "<em>";
-			} elseif($type==="endEm"){
-				$html .= "</em>";
-			} elseif($type==="startStrong"){
-				$html .= "<strong>";
-			} elseif($type==="endStrong"){
-				$html .= "</strong>";
-			} elseif($type==="newline"){
-				$html .= "<br>";
-			} elseif($type==="startParagraph"){
-				$html .= "<p>";
-			} elseif($type==="endParagraph"){
-				$html .= "</p>";
-			} else {
-				$html .= implode(":", $parse)."|";
+		$name = array_key_exists("name", $node) ? $node["name"] : null;
+		
+		$empty = array_key_exists("empty", $node) ? $node["empty"] : null;
+		
+		if($empty){
+			$html .= "<$name>";
+			return $html;
+		}
+		
+		if($name!=="#ROOT"){
+			$html .= "<$name>";
+		}
+		
+		foreach($node["children"] as $child){
+			if($child["name"]==="#TEXT"){
+				$html .= $child["value"];
+				continue;
 			}
+			
+			$html .= $this->nodeToHTML($child);
+		}
+		
+		if($name!=="#ROOT"){
+			$html .= "</$name>";
 		}
 		
 		return $html;
@@ -162,7 +169,7 @@ class Tokenizer {
 		
 		$this->backup();
 		$this->tokens[] = array("startParagraph");
-		$this->state = "mol";
+		$this->state = "startParagraph";
 	}
 	
 	protected function newLine(){
@@ -219,6 +226,12 @@ class Tokenizer {
 
 		if($ch==="\n"){
 			// Ignore
+			return;
+		}
+		
+		if($ch==="*"){
+			$this->backup();
+			$this->state = "afterSpace";
 			return;
 		}
 		
@@ -289,6 +302,7 @@ class Tokenizer {
 class Parser {
 	protected $tokens = null;
 	protected $tree = null;
+	protected $current = null;
 	protected $position = 0;
 	protected $state = "data";
 	protected $states = array(
@@ -299,6 +313,12 @@ class Parser {
 	
 	public function __construct(array $tokens){
 		$this->tokens = $tokens;
+		$this->tree = array(
+			"name" => "#ROOT",
+			"empty" => false,
+			"children" => array(),
+		);
+		$this->current =& $this->tree;
 		
 		$count = count($this->tokens);
 		while($this->position<$count){
@@ -351,24 +371,138 @@ class Parser {
 	}
 	
 	protected $open_elements = array();
+	protected $element_types = array(
+		"p" => "block",
+		"em" => "inline",
+		"strong" => "inline",
+	);
+	
+	protected function appendElement($elt){
+		$parent =& $this->current;
+		$this->current["children"][] = array(
+			"parent" => $parent,
+			"name" => $elt,
+			"type" => array_key_exists($elt, $this->element_types) ? $this->element_types[$elt] : "inline",
+			"empty" => true,
+		);
+	}
+	
+	protected function openElement($elt){
+		$parent =& $this->current;
+		$this->current["children"][] = array(
+			"parent" => &$parent,
+			"name" => $elt,
+			"type" => array_key_exists($elt, $this->element_types) ? $this->element_types[$elt] : "inline",
+			"empty" => false,
+			"children" => array(),
+		);
+		$this->current =& $this->current["children"][count($this->current["children"])-1];
+		
+		$this->open_elements[] = $elt;
+	}
+	
+	protected function closeElement($elt){
+		if(!in_array($elt, $this->open_elements)){
+			return false;
+		}
+		
+		while($this->current["name"]!==$elt){
+			$this->current =& $this->current["parent"];
+		}
+		$this->current =& $this->current["parent"];
+		
+		while($popped = array_pop($this->open_elements)){
+			if($popped===NULL){
+				break;
+			}
+			if($popped===$elt){
+				break;
+			}
+		}
+	}
+	
+	protected function appendText($text){
+		$parent =& $this->current;
+		$this->current["children"][] = array(
+			"parent" => $parent,
+			"name" => "#TEXT",
+			"type" => "text",
+			"value" => $text,
+		);
+	}
+	
 	protected function data(){
 		$token = $this->consume();
+		if(!array_key_exists(1, $token)){
+			$token[1] = null;
+		}
 		
 		if($token[0]==="startParagraph"){
-			$this->open_elements[] = "p";
-			$this->tree[] = $token;
+			if(in_array("p", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->openElement("p");
+			return;
+		}
+		
+		if($token[0]==="endParagraph"){
+			$this->closeElement("p");
+			return;
+		}
+		
+		if($token[0]==="startEm"){
+			if(in_array("em", $this->open_elements)){
+				$this->appendText("*");
+				return;
+			}
+			$this->openElement("em");
+			return;
+		}
+		
+		if($token[0]==="endEm"){
+			if(!in_array("em", $this->open_elements)){
+				$this->appendText("*");
+				return;
+			}
+			$this->closeElement("em");
+			return;
+		}
+		
+		if($token[0]==="startStrong"){
+			if(in_array("strong", $this->open_elements)){
+				$this->appendText("**");
+				return;
+			}
+			$this->openElement("strong");
+			return;
+		}
+		
+		if($token[0]==="endStrong"){
+			if(!in_array("strong", $this->open_elements)){
+				$this->appendText("**");
+				return;
+			}
+			$this->closeElement("strong");
 			return;
 		}
 		
 		if($token[0]==="character"&&$token[1]===" "){
 			$this->state = "afterSpace";
+			return;
 		}
 		
 		if($token[0]==="newline"){
 			$this->state = "afterNewline";
+			return;
 		}
 		
-		$this->tree[] = $token;
+		if($token[0]==="character"){
+			$this->appendText($token[1]);
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
 	}
 	
 	protected function afterSpace(){
@@ -378,6 +512,7 @@ class Parser {
 			}
 			$this->consume();
 		}
+		$this->appendText(" ");
 		$this->state = "data";
 		return;
 	}
@@ -389,6 +524,7 @@ class Parser {
 			}
 			$this->consume();
 		}
+		$this->appendElement("br");
 		$this->state = "data";
 		return;
 	}

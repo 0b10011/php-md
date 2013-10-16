@@ -124,7 +124,7 @@ class Tokenizer {
 		$ch = mb_substr($this->markdown, $this->position, 1, $this->encoding);
 		
 		if($ch===""){
-			throw(new OutOfRangeException("consume() called but not characters left"));
+			throw(new OutOfRangeException("consume() called but no characters left"));
 		}
 		
 		$this->position++;
@@ -247,9 +247,16 @@ class Tokenizer {
 		}
 		
 		if($ch==="*"){
-			$next = $this->next();
-			if($next==="*"){
-				$this->consume();
+			$consumed = $this->consume("*");
+			if($consumed>2){
+				$this->position = $this->position - ($consumed - 2);
+				$consumed = 2;
+			}
+			if($consumed===2){
+				$this->tokens[] = array("endEm");
+				$this->tokens[] = array("endStrong");
+				return;
+			} elseif($consumed===1){
 				$this->tokens[] = array("endStrong");
 				return;
 			}

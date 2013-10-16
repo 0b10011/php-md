@@ -28,4 +28,10 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$markdown = new bfrohs\markdown\Markdown($text);
 		$this->assertEquals($markdown->toHTML(), '<p>foo <strong>bar</strong></p>');
 	}
+	
+	public function testEmStrong(){
+		$text = "foo ***bar***";
+		$markdown = new bfrohs\markdown\Markdown($text);
+		$this->assertEquals($markdown->toHTML(), '<p>foo <strong><em>bar</em></strong></p>');
+	}
 }

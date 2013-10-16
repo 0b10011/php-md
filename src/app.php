@@ -2,7 +2,7 @@
 
 namespace bfrohs\markdown;
 
-require_once(MARKDOWN_SOURCE.'/exceptions.php');
+require_once(MARKDOWN_SOURCE."/exceptions.php");
 
 class Markdown {
 	
@@ -13,7 +13,7 @@ class Markdown {
 	 */
 	protected $markdown = null;
 	
-	protected $encoding = 'UTF-8';
+	protected $encoding = "UTF-8";
 	
 	public function __construct($text, array $options = null){
 		if($options){
@@ -34,10 +34,27 @@ class Markdown {
 	}
 	
 	public function toHTML(){
-		$html = '';
+		$html = "";
 		
 		foreach($this->parse_tree as $parse){
-			$html .= $parse.'-';
+			$type = array_key_exists(0, $parse) ? $parse[0] : null;
+			$value = array_key_exists(1, $parse) ? $parse[1] : null;
+			
+			if($type==="character"){
+				$html .= $value;
+			} elseif($type==="startEm"){
+				$html .= "<em>";
+			} elseif($type==="startStrong"){
+				$html .= "<strong>";
+			} elseif($type==="newline"){
+				$html .= "<br>";
+			} elseif($type==="startParagraph"){
+				$html .= "<p>";
+			} elseif($type==="endParagraph"){
+				$html .= "</p>";
+			} else {
+				$html .= implode(":", $parse)."|";
+			}
 		}
 		
 		return $html;
@@ -51,10 +68,13 @@ class Tokenizer {
 	protected $tokens = array();
 	protected $position = 0;
 	protected $last_consumed = false;
-	protected $state = 'sol';
+	protected $state = "start";
 	protected $states = array(
-		'sol' => 'sol',
-		'list' => 'listState',
+		"start" => "start",
+		"mol" => "mol",
+		"newLine" => "newLine",
+		"afterNewLine" => "afterNewLine",
+		"startParagraph" => "startParagraph",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -69,16 +89,36 @@ class Tokenizer {
 			$state = $this->states[$this->state];
 			$this->$state();
 		}
+		
+		$this->tokens[] = array("endParagraph");
 	}
 	
 	public function getTokens(){
 		return $this->tokens;
 	}
 	
-	protected function consume(){
+	protected function consume($toConsume = null){
+		if($toConsume!==null){
+			if(!is_string($toConsume)){
+				throw(new InvalidArgumentException("Provided toConsume `$toConsume` was not a string"));
+			}
+			
+			if(mb_strlen($toConsume)!==1){
+				throw(new InvalidArgumentException("Provided toConsume `$toConsume` was not 1 character"));
+			}
+			
+			$consumed = 0;
+			while(mb_substr($this->markdown, $this->position, 1, $this->encoding)===$toConsume){
+				$this->position++;
+				$consumed++;
+			}
+			
+			return $consumed;
+		}
+		
 		$ch = mb_substr($this->markdown, $this->position, 1, $this->encoding);
 		
-		if($ch===''){
+		if($ch===""){
 			throw(new OutOfRangeException("consume() called but not characters left"));
 		}
 		
@@ -87,35 +127,121 @@ class Tokenizer {
 		return $ch;
 	}
 	
+	protected function backup($steps = 1){
+		if(!is_integer($steps)){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was not an integer"));
+		}
+		if($steps<1){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was less than 1"));
+		}
+		if($this->position-$steps<0){
+			throw(new OutOfRangeException("backup($steps) called when position is $this->position"));
+		}
+		
+		$this->position = $this->position - $steps;
+	}
+	
 	protected function next(){
 		$ch = mb_substr($this->markdown, $this->position, 1, $this->encoding);
 		
 		return $ch;
 	}
 	
-	protected function sol(){
+	protected function start(){
 		$ch = $this->consume();
 
 		if($ch==="\n"){
-			$this->tokens[] = array("newline", $ch);
+			// Ignore
 			return;
 		}
 		
-		if(($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
-			$this->tokens[] = array("list", $ch.$this->consume());
-			$this->state = 'list';
-			return;
-		}
-		
-		$this->tokens[] = array("character", $ch);
+		$this->backup();
+		$this->tokens[] = array("startParagraph");
+		$this->state = "mol";
 	}
 	
-	protected function listState(){
+	protected function newLine(){
 		$ch = $this->consume();
 		
 		if($ch==="\n"){
-			$this->tokens[] = array("newline", $ch);
-			$this->state = 'sol';
+			if($this->consume("\n")){
+				$this->tokens[] = array("endParagraph");
+				$this->tokens[] = array("startParagraph");
+				$this->state = "startParagraph";
+				return;
+			}
+			$this->state = "mol";
+			$this->tokens[] = array("character", " ");
+			return;
+		}
+		
+		if($ch===" "&&$this->consume(" ")){
+			$consumed = $this->consume("\n");
+			if($consumed===1){
+				$this->tokens[] = array("newline");
+				$this->state = "afterNewLine";
+				return;
+			} elseif($consumed){
+				$this->tokens[] = array("endParagraph");
+				$this->tokens[] = array("startParagraph");
+				$this->state = "startParagraph";
+				return;
+			}
+		}
+		
+		throw(new BadMethodCallException("In newLine state, but ch `$ch` is not a new line"));
+	}
+	
+	protected function afterNewLine(){
+		$ch = $this->consume();
+
+		if($ch==="\n"){
+			// Ignore
+			return;
+		}
+		
+		$this->backup();
+		$this->state = "mol";
+	}
+	
+	protected function startParagraph(){
+		$ch = $this->consume();
+
+		if($ch==="\n"){
+			// Ignore
+			return;
+		}
+		
+		$this->backup();
+		$this->state = "mol";
+	}
+	
+	protected function mol(){
+		$ch = $this->consume();
+		
+		if($ch==="\n"){
+			$this->state = "newLine";
+			$this->backup();
+			return;
+		}
+		
+		if($ch===" "&&$this->consume(" ")){
+			if($this->next()==="\n"){
+				$this->backup(2);
+				$this->state = "newLine";
+				return;
+			}
+			$this->tokens[] = array("character", $ch);
+			return;
+		}
+		
+		if($ch==="*"){
+			$next = $this->next();
+			if($next==="*"){
+				$this->consume();
+				$this->tokens[] = array("startStrong");
+			}
+			$this->tokens[] = array("startEm", $ch);
 			return;
 		}
 		
@@ -127,9 +253,11 @@ class Parser {
 	protected $tokens = null;
 	protected $tree = null;
 	protected $position = 0;
-	protected $state = 'data';
+	protected $state = "data";
 	protected $states = array(
-		'data' => 'data',
+		"data" => "data",
+		"afterSpace" => "afterSpace",
+		"afterNewline" => "afterNewline",
 	);
 	
 	public function __construct(array $tokens){
@@ -161,14 +289,70 @@ class Parser {
 		return $token;
 	}
 	
+	protected function backup($steps = 1){
+		if(!is_integer($steps)){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was not an integer"));
+		}
+		if($steps<1){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was less than 1"));
+		}
+		if($this->position-$steps<0){
+			throw(new OutOfRangeException("backup($steps) called when position is $this->position"));
+		}
+		
+		$this->position = $this->position - $steps;
+	}
+	
+	protected function next(){
+		if(!array_key_exists($this->position, $this->tokens)){
+			return null;
+		}
+		
+		$token = $this->tokens[$this->position];
+		
+		return $token;
+	}
+	
+	protected $open_elements = array();
 	protected function data(){
 		$token = $this->consume();
 		
-		if($token[0]==='list'){
-			$this->tree[] = 'list';
+		if($token[0]==="startParagraph"){
+			$this->open_elements[] = "p";
+			$this->tree[] = $token;
 			return;
 		}
 		
-		$this->tree[] = $token[1];
+		if($token[0]==="character"&&$token[1]===" "){
+			$this->state = "afterSpace";
+		}
+		
+		if($token[0]==="newline"){
+			$this->state = "afterNewline";
+		}
+		
+		$this->tree[] = $token;
+	}
+	
+	protected function afterSpace(){
+		while($next = $this->next()){
+			if($next[0]!=="character"||$next[1]!==" "){
+				break;
+			}
+			$this->consume();
+		}
+		$this->state = "data";
+		return;
+	}
+	
+	protected function afterNewline(){
+		while($next = $this->next()){
+			if($next[0]!=="character"||$next[1]!==" "){
+				break;
+			}
+			$this->consume();
+		}
+		$this->state = "data";
+		return;
 	}
 }

@@ -87,6 +87,8 @@ class Tokenizer {
 		"afterNewLine" => "afterNewLine",
 		"startParagraph" => "startParagraph",
 		"afterSpace" => "afterSpace",
+		"startCode" => "startCode",
+		"inCode" => "inCode",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -290,6 +292,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="`"){
+			$this->backup();
+			$this->state = "startCode";
+			return;
+		}
+		
 		if($ch===" "){
 			if($this->consume(" ")&&$this->next()==="\n"){
 				$this->backup(2);
@@ -318,6 +326,38 @@ class Tokenizer {
 			$this->tokens[] = array("toggleEm", $ch);
 			return;
 		}
+		
+		$this->tokens[] = array("character", $ch);
+	}
+	
+	protected $code_backticks = null;
+	protected function startCode(){
+		$consumed = $this->consume("`");
+		
+		if(!$consumed){
+			throw(new BadMethodCallException("In code state, but no ` could be consumed"));
+		}
+		
+		$this->code_backticks = $consumed;
+		$this->state = "inCode";
+		$this->tokens[] = array("startCode");
+	}
+	
+	protected function inCode(){
+		$consumed = $this->consume("`");
+		
+		if($consumed > $this->code_backticks){
+			$this->backup($consumed - $this->code_backticks);
+			$consumed = $this->code_backticks;
+		}
+		
+		if($consumed===$this->code_backticks){
+			$this->tokens[] = array("closeCode");
+			return;
+		}
+		
+		if($consumed) $this->backup($consumed);
+		$ch = $this->consume();
 		
 		$this->tokens[] = array("character", $ch);
 	}
@@ -556,6 +596,24 @@ class Parser {
 				$this->openElement("p");
 			}
 			
+			return;
+		}
+		
+		if($token[0]==="startCode"){
+			if(in_array("code", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->openElement("code");
+			return;
+		}
+		
+		if($token[0]==="closeCode"){
+			if(!in_array("code", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->closeElement("code");
 			return;
 		}
 		

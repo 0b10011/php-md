@@ -153,8 +153,22 @@ class Tokenizer {
 		$this->position = $this->position - $steps;
 	}
 	
-	protected function next(){
-		$ch = mb_substr($this->markdown, $this->position, 1, $this->encoding);
+	protected function next($steps = 1){
+		if(!is_integer($steps)){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was not an integer"));
+		}
+		if($steps<1){
+			throw(new InvalidArgumentException("# of steps provided `$steps` was less than 1"));
+		}
+		
+		// Adjust $steps by 1 so we don't have to worry about it later
+		$steps--;
+		
+		if($this->position + $steps > mb_strlen($this->markdown)){
+			return null;
+		}
+		
+		$ch = mb_substr($this->markdown, $this->position + $steps, 1, $this->encoding);
 		
 		return $ch;
 	}
@@ -227,6 +241,28 @@ class Tokenizer {
 		if($ch==="\n"){
 			// Ignore
 			return;
+		}
+		
+		if($ch==="-"||$ch==="*"){
+			
+			// Loop through line and consume $ch (ignoring spaces)
+			$consumed = 1;
+			$skipped = 0;
+			do {
+				$skipped += $this->consume(" ");
+				$consumed += $found = $this->consume($ch);
+			} while($found);
+			
+			// If at least 3 $ch were consumed and followed by two new lines, add "rule" token
+			if($consumed>=3&&$this->next()==="\n"&&$this->next(2)==="\n"){
+				$this->tokens[] = array("rule", $ch);
+				return;
+			}
+			
+			// Not found, back up to $ch
+			$backup = $skipped + $consumed - 1;
+			if($backup) $this->backup($backup);
+			unset($consumed, $skipped, $found);
 		}
 		
 		if($ch==="*"){
@@ -502,6 +538,24 @@ class Parser {
 		
 		if($token[0]==="endParagraph"){
 			$this->closeElement("p");
+			return;
+		}
+		
+		if($token[0]==="rule"){
+			// If in a paragraph, close it
+			if(in_array("p", $this->open_elements)){
+				$this->closeElement("p");
+				$closed_p = true;
+			}
+			
+			// Append <hr>
+			$this->appendElement("hr");
+			
+			// If paragraph was closed, open a new one
+			if($closed_p){
+				$this->openElement("p");
+			}
+			
 			return;
 		}
 		

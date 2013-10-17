@@ -13,6 +13,57 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo bar</p><p>hello</p><p>world</p>', $markdown->toHTML());
 	}
 	
+	public function testHorizontalRules(){
+		$text = "foo\n\n---\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesSpaces(){
+		$text = "foo\n\n- -  -\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesInvalid(){
+		$text = "foo\n---\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo ---</p><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesInvalid2(){
+		$text = "foo\n\n---\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><p>--- bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesAsterisk(){
+		$text = "foo\n\n***\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesAsteriskSpaces(){
+		$text = "foo\n\n* *  *\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	/**
+	 * Converted to <strong><em>, then discarded when empty
+	 */
+	public function testHorizontalRulesAsteriskInvalid(){
+		$text = "foo\n***\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo </p><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesAsteriskInvalid2(){
+		$text = "foo\n\n***\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><p><strong><em> bar</em></strong></p>', $markdown->toHTML());
+	}
+	
 	public function testEmMultiple(){
 		$text = "*foo* *bar*";
 		$markdown = new Markdown($text);

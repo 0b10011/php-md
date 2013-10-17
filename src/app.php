@@ -259,8 +259,8 @@ class Tokenizer {
 			return;
 		}
 		
-		if($ch==="*"){
-			$consumed = $this->consume("*");
+		if($ch==="*"||$ch==="_"){
+			$consumed = $this->consume($ch);
 			if($consumed>2){
 				$this->position = $this->position - ($consumed - 2);
 				$consumed = 2;
@@ -273,7 +273,7 @@ class Tokenizer {
 				$this->tokens[] = array("endStrong");
 				return;
 			}
-			$this->tokens[] = array("endEm");
+			$this->tokens[] = array("endEm", $ch);
 			return;
 		}
 		
@@ -283,14 +283,14 @@ class Tokenizer {
 	protected function afterSpace(){
 		$ch = $this->consume();
 		
-		if($ch==="*"){
+		if($ch==="*"||$ch==="_"){
 			$next = $this->next();
-			if($next==="*"){
+			if($next===$ch){
 				$this->consume();
 				$this->tokens[] = array("startStrong");
 				return;
 			}
-			$this->tokens[] = array("startEm");
+			$this->tokens[] = array("startEm", $ch);
 			return;
 		}
 		

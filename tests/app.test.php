@@ -31,8 +31,20 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo <em>bar</em></p>', $markdown->toHTML());
 	}
 	
+	public function testEmUnderscore(){
+		$text = "foo _bar_";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <em>bar</em></p>', $markdown->toHTML());
+	}
+	
 	public function testStrong(){
 		$text = "foo **bar**";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <strong>bar</strong></p>', $markdown->toHTML());
+	}
+	
+	public function testStrongUnderscore(){
+		$text = "foo __bar__";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>foo <strong>bar</strong></p>', $markdown->toHTML());
 	}

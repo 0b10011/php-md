@@ -106,6 +106,18 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo</p><h6># bar</h6><p>hello</p>', $markdown->toHTML());
 	}
 	
+	public function testAtxHeadersEm(){
+		$text = "# foo *bar  \nhello\n\nworld";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<h1>foo <em>bar<br>hello</em></h1><p>world</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeadersStrong(){
+		$text = "# foo **bar  \nhello\n\nworld";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<h1>foo <strong>bar<br>hello</strong></h1><p>world</p>', $markdown->toHTML());
+	}
+	
 	public function testCode(){
 		$text = "`foo bar`";
 		$markdown = new Markdown($text);
@@ -134,6 +146,18 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$text = "foo *bar*";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>foo <em>bar</em></p>', $markdown->toHTML());
+	}
+	
+	public function testEmWrapped(){
+		$text = "foo *bar\nhello*";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <em>bar hello</em></p>', $markdown->toHTML());
+	}
+	
+	public function testEmNewline(){
+		$text = "foo *bar  \nhello*";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <em>bar<br>hello</em></p>', $markdown->toHTML());
 	}
 	
 	public function testEmInWord(){

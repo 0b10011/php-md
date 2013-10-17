@@ -64,6 +64,48 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo</p><p><strong><em> bar</em></strong></p>', $markdown->toHTML());
 	}
 	
+	public function testAtxHeaders1(){
+		$text = "foo\n\n# bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h1>bar</h1><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders2(){
+		$text = "foo\n\n## bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h2>bar</h2><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders3(){
+		$text = "foo\n\n### bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h3>bar</h3><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders4(){
+		$text = "foo\n\n#### bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h4>bar</h4><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders5(){
+		$text = "foo\n\n##### bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h5>bar</h5><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders6(){
+		$text = "foo\n\n###### bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h6>bar</h6><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testAtxHeaders7(){
+		$text = "foo\n\n####### bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><h6># bar</h6><p>hello</p>', $markdown->toHTML());
+	}
+	
 	public function testCode(){
 		$text = "`foo bar`";
 		$markdown = new Markdown($text);

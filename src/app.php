@@ -89,6 +89,7 @@ class Tokenizer {
 		"afterSpace" => "afterSpace",
 		"startCode" => "startCode",
 		"inCode" => "inCode",
+		"atxHeader" => "atxHeader",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -183,6 +184,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="#"){
+			$this->backup();
+			$this->state = "atxHeader";
+			return;
+		}
+		
 		$this->backup();
 		$this->tokens[] = array("startParagraph");
 		$this->state = "startParagraph";
@@ -193,7 +200,13 @@ class Tokenizer {
 		
 		if($ch==="\n"){
 			if($this->consume("\n")){
-				$this->tokens[] = array("endParagraph");
+				$this->tokens[] = array("endBlock");
+				
+				if($this->next()==="#"){
+					$this->state = "atxHeader";
+					return;
+				}
+				
 				$this->tokens[] = array("startParagraph");
 				$this->state = "startParagraph";
 				return;
@@ -210,7 +223,7 @@ class Tokenizer {
 				$this->state = "afterNewLine";
 				return;
 			} elseif($consumed){
-				$this->tokens[] = array("endParagraph");
+				$this->tokens[] = array("endBlock");
 				$this->tokens[] = array("startParagraph");
 				$this->state = "startParagraph";
 				return;
@@ -234,6 +247,25 @@ class Tokenizer {
 		}
 		
 		$this->backup();
+		$this->state = "mol";
+	}
+	
+	protected function atxHeader(){
+		$consumed = $this->consume("#");
+		
+		if(!$consumed){
+			throw(new BadMethodCallException("In atxHeader state, but no # could be consumed"));
+		}
+		
+		if($consumed>6){
+			$this->backup($consumed-6);
+			$consumed = 6;
+		}
+		
+		// Get rid of leading whitespace
+		$this->consume(" ");
+		
+		$this->tokens[] = array("atxHeader", "$consumed");
 		$this->state = "mol";
 	}
 	
@@ -551,6 +583,18 @@ class Parser {
 		
 	}
 	
+	protected function closeBlock(){
+		while($this->current["name"]!=="#ROOT"){
+			
+			if($this->current["type"]==="block"){
+				$this->closeElement($this->current["name"]);
+				break;
+			}
+			
+			$this->closeElement($this->current["name"]);
+		}
+	}
+	
 	protected function appendText($text){
 		$parent =& $this->current;
 		$this->current["children"][] = array(
@@ -565,6 +609,11 @@ class Parser {
 		$token = $this->consume();
 		if(!array_key_exists(1, $token)){
 			$token[1] = null;
+		}
+		
+		if($token[0]==="endBlock"){
+			$this->closeBlock();
+			return;
 		}
 		
 		if($token[0]==="startParagraph"){
@@ -596,6 +645,11 @@ class Parser {
 				$this->openElement("p");
 			}
 			
+			return;
+		}
+		
+		if($token[0]==="atxHeader"){
+			$this->openElement("h$token[1]");
 			return;
 		}
 		

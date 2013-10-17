@@ -118,6 +118,12 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<h1>foo <strong>bar<br>hello</strong></h1><p>world</p>', $markdown->toHTML());
 	}
 	
+	public function testOrderedList(){
+		$text = "1. foo\n2. bar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<ol><li>foo</li><li>bar</li></ol>', $markdown->toHTML());
+	}
+	
 	public function testList(){
 		$text = "* foo\n* bar";
 		$markdown = new Markdown($text);

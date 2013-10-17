@@ -91,6 +91,7 @@ class Tokenizer {
 		"inCode" => "inCode",
 		"atxHeader" => "atxHeader",
 		"ul" => "ul",
+		"ol" => "ol",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -177,6 +178,12 @@ class Tokenizer {
 		return $ch;
 	}
 	
+	protected function match($pattern){
+		$matches = null;
+		preg_match("/$pattern/", mb_substr($this->markdown, $this->position), $matches);
+		return $matches;
+	}
+	
 	protected function start(){
 		$ch = $this->consume();
 
@@ -188,6 +195,12 @@ class Tokenizer {
 		if($ch==="#"){
 			$this->backup();
 			$this->state = "atxHeader";
+			return;
+		}
+		
+		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
+			$this->backup();
+			$this->state = "ol";
 			return;
 		}
 		
@@ -214,6 +227,11 @@ class Tokenizer {
 			
 			if($new_block&&$this->next()==="#"){
 				$this->state = "atxHeader";
+				return;
+			}
+			
+			if(preg_match("/\d/", $this->next())&&$this->match("\d*\. ")){
+				$this->state = "ol";
 				return;
 			}
 			
@@ -288,6 +306,25 @@ class Tokenizer {
 		}
 		
 		$this->tokens[] = array("ul", "$ch");
+		$this->state = "mol";
+	}
+	
+	protected function ol(){
+		$ch = $this->consume();
+		
+		if(!preg_match("/\d/", $ch)||!$this->match("\d*\. ")){
+			throw(new BadMethodCallException("In ol state, but invalid pattern found"));
+		}
+		
+		// Consume all digits and period
+		do {
+			$ch = $this->consume();
+		} while(preg_match("/\d/", $ch));
+		
+		// Consume all leading whitespace
+		$this->consume(" ");
+		
+		$this->tokens[] = array("ol");
 		$this->state = "mol";
 	}
 	
@@ -692,6 +729,17 @@ class Parser {
 		if($token[0]==="ul"){
 			if(!in_array("ul", $this->open_elements)){
 				$this->openElement("ul");
+			}
+			if(in_array("li", $this->open_elements)){
+				$this->closeElement("li");
+			}
+			$this->openElement("li");
+			return;
+		}
+		
+		if($token[0]==="ol"){
+			if(!in_array("ol", $this->open_elements)){
+				$this->openElement("ol");
 			}
 			if(in_array("li", $this->open_elements)){
 				$this->closeElement("li");

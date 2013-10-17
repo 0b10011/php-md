@@ -272,14 +272,14 @@ class Tokenizer {
 				$consumed = 2;
 			}
 			if($consumed===2){
-				$this->tokens[] = array("endEm");
-				$this->tokens[] = array("endStrong");
+				$this->tokens[] = array("toggleEm");
+				$this->tokens[] = array("toggleStrong");
 				return;
 			} elseif($consumed===1){
-				$this->tokens[] = array("endStrong");
+				$this->tokens[] = array("toggleStrong");
 				return;
 			}
-			$this->tokens[] = array("endEm", $ch);
+			$this->tokens[] = array("toggleEm", $ch);
 			return;
 		}
 		
@@ -514,9 +514,9 @@ class Parser {
 			return;
 		}
 		
-		if($token[0]==="endEm"){
+		if($token[0]==="toggleEm"){
 			if(!in_array("em", $this->open_elements)){
-				// Ignore
+				$this->openElement("em");
 				return;
 			}
 			$this->closeElement("em");
@@ -532,9 +532,9 @@ class Parser {
 			return;
 		}
 		
-		if($token[0]==="endStrong"){
+		if($token[0]==="toggleStrong"){
 			if(!in_array("strong", $this->open_elements)){
-				// Ignore
+				$this->openElement("strong");
 				return;
 			}
 			$this->closeElement("strong");

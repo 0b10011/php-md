@@ -31,10 +31,22 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo <em>bar</em></p>', $markdown->toHTML());
 	}
 	
+	public function testEmInWord(){
+		$text = "foo*bar*";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo<em>bar</em></p>', $markdown->toHTML());
+	}
+	
 	public function testEmUnderscore(){
 		$text = "foo _bar_";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>foo <em>bar</em></p>', $markdown->toHTML());
+	}
+	
+	public function testEmUnderscoreInWord(){
+		$text = "foo_bar_";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo<em>bar</em></p>', $markdown->toHTML());
 	}
 	
 	public function testStrong(){
@@ -43,10 +55,22 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo <strong>bar</strong></p>', $markdown->toHTML());
 	}
 	
+	public function testStrongInWord(){
+		$text = "foo**bar**";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo<strong>bar</strong></p>', $markdown->toHTML());
+	}
+	
 	public function testStrongUnderscore(){
 		$text = "foo __bar__";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>foo <strong>bar</strong></p>', $markdown->toHTML());
+	}
+	
+	public function testStrongUnderscoreInWord(){
+		$text = "foo__bar__";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo<strong>bar</strong></p>', $markdown->toHTML());
 	}
 	
 	public function testEmStrong(){
@@ -97,9 +121,21 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p><strong>foo bar</strong></p>', $markdown->toHTML());
 	}
 	
-	public function testBackslashEm(){
+	public function testBackslashAsterisk(){
 		$text = "\*foo bar";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>*foo bar</p>', $markdown->toHTML());
+	}
+	
+	public function testBackslashEm(){
+		$text = "\**foo bar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>*<em>foo bar</em></p>', $markdown->toHTML());
+	}
+	
+	public function testBackslashStrong(){
+		$text = "\***foo bar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>*<strong>foo bar</strong></p>', $markdown->toHTML());
 	}
 }

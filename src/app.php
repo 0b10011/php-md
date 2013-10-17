@@ -373,8 +373,8 @@ class Parser {
 	protected $open_elements = array();
 	protected $element_types = array(
 		"p" => "block",
-		"em" => "inline",
-		"strong" => "inline",
+		"em" => "formatting",
+		"strong" => "formatting",
 	);
 	
 	protected function appendElement($elt){
@@ -406,19 +406,67 @@ class Parser {
 			return false;
 		}
 		
-		while($this->current["name"]!==$elt){
+		do {
+			if($this->current["name"]==="#ROOT"){
+				break;
+			}
+			
+			// If no children, flag for removal
+			$remove = null;
+			if(!$this->current["children"]){
+				$remove =& $this->current;
+			}
+			
+			// Store name to check against $elt later
+			$removed = $this->current["name"];
+			
+			// Set current node to the parent
 			$this->current =& $this->current["parent"];
-		}
-		$this->current =& $this->current["parent"];
+			
+			// If flagged for removal, set to NULL, then loop through children of parent and
+			// unset NULL child. After unset, reindex children.
+			if($remove){
+				$remove = null;
+				foreach($this->current["children"] as $key => $child){
+					if($child===null){
+						unset($this->current["children"][$key]);
+						break; // Only one could have been set to null above, so no need to keep going
+					}
+				}
+				$this->current["children"] = array_values($this->current["children"]);
+			}
+		} while($removed!==$elt);
 		
+		$reopen_formatting = array();
 		while($popped = array_pop($this->open_elements)){
+			// If nothing popped, we're done, exit loop
 			if($popped===NULL){
 				break;
 			}
+			
+			$element_type = array_key_exists($popped, $this->element_types) ? $this->element_types[$popped] : "inline";
+			
+			// If popped element is block, clear $reopen_formatting
+			if($element_type==="block"){
+				$reopen_formatting = array();
+			}
+			
+			// If popped element is this element, we're done, exit loop
 			if($popped===$elt){
 				break;
 			}
+			
+			// If popped element type is formatting, add to $reopen_formatting
+			if($element_type==="formatting"){
+				$reopen_formatting[] = $popped;
+			}
 		}
+		
+		// Loop through $reopen_formatting and open all formatting elements listed
+		foreach($reopen_formatting as $formatting_element){
+			$this->openElement($formatting_element);
+		}
+		
 	}
 	
 	protected function appendText($text){

@@ -49,6 +49,12 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p><em>foo <strong>bar</strong></em></p>', $markdown->toHTML());
 	}
 	
+	public function testEmStrongOverlapping(){
+		$text = "*foo **bar* hello**";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p><em>foo <strong>bar</strong></em><strong> hello</strong></p>', $markdown->toHTML());
+	}
+	
 	public function testStrongEm(){
 		$text = "**foo *bar***";
 		$markdown = new Markdown($text);

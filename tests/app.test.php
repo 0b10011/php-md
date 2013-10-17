@@ -96,4 +96,10 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p><strong>foo bar</strong></p>', $markdown->toHTML());
 	}
+	
+	public function testBackslashEm(){
+		$text = "\*foo bar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>*foo bar</p>', $markdown->toHTML());
+	}
 }

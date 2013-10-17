@@ -248,6 +248,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			$this->tokens[] = array("character", $ch);
+			return;
+		}
+		
 		if($ch===" "){
 			if($this->consume(" ")&&$this->next()==="\n"){
 				$this->backup(2);

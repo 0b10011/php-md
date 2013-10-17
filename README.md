@@ -30,3 +30,14 @@ $html = $markdown->toHTML();
 
 echo $html; // <p>Some string using <em>markdown</em>.</p>
 ```
+
+# Notes
+
+Asterisks are hidden, even if they don't match up, unless they are escaped (`\*`). This
+is to avoid showing asterisks when they are intended for formatting, but were not entered
+or parsed as expected. The problem is commonly encountered when switching from one
+Markdown parser to another, or when a bug that an article depends on to be formatted
+correctly is fixed. When dealing with a large number of articles (eg, on a blog), it is
+often undesired to have stray `*` show up due to a parser change. For those that
+want to fix these inconsistencies, it should soon be possible to find errors found during
+parsing (and possibly fix automatically).

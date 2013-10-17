@@ -58,7 +58,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	public function testEmMultipleOpen(){
 		$text = "*foo *bar*";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p><em>foo *bar</em></p>', $markdown->toHTML());
+		$this->assertEquals('<p><em>foo bar</em></p>', $markdown->toHTML());
 	}
 	
 	public function testEmUnclosed(){
@@ -70,7 +70,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	public function testStrongMultipleOpen(){
 		$text = "**foo **bar**";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p><strong>foo **bar</strong></p>', $markdown->toHTML());
+		$this->assertEquals('<p><strong>foo bar</strong></p>', $markdown->toHTML());
 	}
 	
 	public function testStrongUnclosed(){

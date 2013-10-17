@@ -453,7 +453,7 @@ class Parser {
 		
 		if($token[0]==="startEm"){
 			if(in_array("em", $this->open_elements)){
-				$this->appendText("*");
+				// Ignore
 				return;
 			}
 			$this->openElement("em");
@@ -462,7 +462,7 @@ class Parser {
 		
 		if($token[0]==="endEm"){
 			if(!in_array("em", $this->open_elements)){
-				$this->appendText("*");
+				// Ignore
 				return;
 			}
 			$this->closeElement("em");
@@ -471,7 +471,7 @@ class Parser {
 		
 		if($token[0]==="startStrong"){
 			if(in_array("strong", $this->open_elements)){
-				$this->appendText("**");
+				// Ignore
 				return;
 			}
 			$this->openElement("strong");
@@ -480,7 +480,7 @@ class Parser {
 		
 		if($token[0]==="endStrong"){
 			if(!in_array("strong", $this->open_elements)){
-				$this->appendText("**");
+				// Ignore
 				return;
 			}
 			$this->closeElement("strong");

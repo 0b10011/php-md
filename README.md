@@ -3,6 +3,12 @@
 **Important:** This is an *experiment* and may be changed, rebased, or trashed at any
 point. Use extreme caution before using this code.
 
+A few things to track:
+
+- [Core Syntax milestone](https://github.com/bfrohs/php-md/issues?milestone=1&state=open)
+
+- [GitHub Flavored Markdown milestone](https://github.com/bfrohs/php-md/issues?milestone=2&state=open)
+
 ---
 
 When presented with a choice between simpler parsing and parser correctness (according to

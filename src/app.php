@@ -90,6 +90,7 @@ class Tokenizer {
 		"startCode" => "startCode",
 		"inCode" => "inCode",
 		"atxHeader" => "atxHeader",
+		"ul" => "ul",
 	);
 	
 	public function __construct($markdown, $encoding){
@@ -190,6 +191,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if(($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
+			$this->backup();
+			$this->state = "ul";
+			return;
+		}
+		
 		$this->backup();
 		$this->tokens[] = array("startParagraph");
 		$this->state = "startParagraph";
@@ -199,18 +206,36 @@ class Tokenizer {
 		$ch = $this->consume();
 		
 		if($ch==="\n"){
+			$new_block = false;
 			if($this->consume("\n")){
 				$this->tokens[] = array("endBlock");
+				$new_block = true;
+			}
+			
+			if($new_block&&$this->next()==="#"){
+				$this->state = "atxHeader";
+				return;
+			}
+			
+			if($this->next()==="*"||$this->next()==="-"||$this->next()==="+"){
+				$this->consume();
+				$consumed = $this->consume(" ") + 1; // Account for */-/+ consumed
 				
-				if($this->next()==="#"){
-					$this->state = "atxHeader";
+				$ch = $this->next();
+				$this->backup($consumed);
+				
+				if($ch!=="*"&&$ch!=="-"&&$ch!=="+"){
+					$this->state = "ul";
 					return;
 				}
-				
+			}
+			
+			if($new_block){
 				$this->tokens[] = array("startParagraph");
 				$this->state = "startParagraph";
 				return;
 			}
+			
 			$this->state = "mol";
 			$this->tokens[] = array("character", " ");
 			return;
@@ -247,6 +272,22 @@ class Tokenizer {
 		}
 		
 		$this->backup();
+		$this->state = "mol";
+	}
+	
+	protected function ul(){
+		$ch = $this->consume();
+		
+		if($ch!=="*"&&$ch!=="-"&&$ch!=="+"){
+			throw(new BadMethodCallException("In ul state, but no *, -, or + could be consumed"));
+		}
+		
+		// Ensure at least one leading space - ignore additional leading spaces
+		if(!$this->consume(" ")){
+			throw(new BadMethodCallException("In ul state, but no space after $ch could be consumed"));
+		}
+		
+		$this->tokens[] = array("ul", "$ch");
 		$this->state = "mol";
 	}
 	
@@ -645,6 +686,17 @@ class Parser {
 				$this->openElement("p");
 			}
 			
+			return;
+		}
+		
+		if($token[0]==="ul"){
+			if(!in_array("ul", $this->open_elements)){
+				$this->openElement("ul");
+			}
+			if(in_array("li", $this->open_elements)){
+				$this->closeElement("li");
+			}
+			$this->openElement("li");
 			return;
 		}
 		

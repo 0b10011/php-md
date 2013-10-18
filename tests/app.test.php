@@ -124,6 +124,24 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<h1>foo <strong>bar<br>hello</strong></h1><p>world</p>', $markdown->toHTML());
 	}
 	
+	public function testBlockquote(){
+		$text = "foo\n\n> bar\n\nhello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><blockquote><p>bar</p></blockquote><p>hello</p>', $markdown->toHTML());
+	}
+	
+	public function testBlockquoteMultipleParagraphs(){
+		$text = "> foo\n\n> bar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<blockquote><p>foo</p><p>bar</p></blockquote>', $markdown->toHTML());
+	}
+	
+	public function testBlockquoteMultipleLevels(){
+		$text = "> foo\n\n> > bar\n\n> hello";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<blockquote><p>foo</p><blockquote><p>bar</p></blockquote><p>hello</p></blockquote>', $markdown->toHTML());
+	}
+	
 	public function testOrderedList(){
 		$text = "1. foo\n2. bar";
 		$markdown = new Markdown($text);

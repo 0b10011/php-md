@@ -66,7 +66,7 @@ class Markdown {
 		
 		foreach($node["children"] as $child){
 			if($child["name"]==="#TEXT"){
-				$html .= $this->escapeCharForHtml($child["value"]);
+				$html .= $this->escapeStringForHtml($child["value"]);
 				continue;
 			}
 			
@@ -82,24 +82,19 @@ class Markdown {
 	
 	/**
 	 * 
-	 * @param string $ch Only one character can be escaped at a time
+	 * @param string $string String to be escaped.
 	 * @return string Returns string escaped for placement as text in HTML. That is, this
-	 * is not appropriate for characters that will be part of an HTML attribute value.
+	 * is not appropriate for strings that will be part of an HTML attribute value.
 	 */
-	protected function escapeCharForHtml($ch){
-		if(mb_strlen($ch)!==1){
-			throw(new LengthException("String `$ch` is not one character long"));
-		}
+	protected function escapeStringForHtml($string){
 		
-		if($ch==="<"){
-			return "&lt;";
-		}
+		// Escape & (first to avoid double replacements)
+		$string = str_replace("&", "&amp;", $string);
 		
-		if($ch==="&"){
-			return "&amp;";
-		}
+		// Escape < (> doesn't need to be escaped)
+		$string = str_replace("<", "&lt;", $string);
 		
-		return $ch;
+		return $string;
 	}
 }
 
@@ -249,6 +244,22 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch===">"){
+			$level = 1;
+			do {
+				$this->consume(" "); // Ignore whitespace
+				$level += $matched = $this->consume(">");
+			} while($matched);
+			
+			for($i=0;$i<$level;$i++){
+				$this->tokens[] = array("startBlockquote");
+			}
+			
+			$this->tokens[] = array("startParagraph");
+			$this->state = "startParagraph";
+			return;
+		}
+		
 		$this->backup();
 		$this->tokens[] = array("startParagraph");
 		$this->state = "startParagraph";
@@ -262,6 +273,10 @@ class Tokenizer {
 			if($this->consume("\n")){
 				$this->tokens[] = array("endBlock");
 				$new_block = true;
+			}
+			
+			if($new_block&&$this->next()!==">"){
+				$this->tokens[] = array("endBlockquotes");
 			}
 			
 			if($new_block&&$this->next()==="#"){
@@ -285,6 +300,22 @@ class Tokenizer {
 					$this->state = "ul";
 					return;
 				}
+			}
+			
+			if($new_block&&$this->next()===">"){
+				$level = 0;
+				do {
+					$level += $matched = $this->consume(">");
+					$this->consume(" "); // Ignore whitespace
+				} while($matched);
+
+				for($i=0;$i<$level;$i++){
+					$this->tokens[] = array("startBlockquote");
+				}
+
+				$this->tokens[] = array("startParagraph");
+				$this->state = "startParagraph";
+				return;
 			}
 			
 			if($new_block){
@@ -952,6 +983,46 @@ class Parser {
 				return;
 			}
 			$this->openElement("p");
+			return;
+		}
+		
+		if($token[0]==="startBlockquote"){
+			
+			// Get what level we should go to
+			$level = 1;
+			while($this->next()[0]==="startBlockquote"){
+				$this->consume();
+				$level++;
+			}
+			
+			// Get the current level
+			$current_level = 0;
+			foreach($this->open_elements as $open_element){
+				if($open_element==="blockquote"){
+					$current_level++;
+				}
+			}
+			
+			// Figure out the difference
+			if($current_level<$level){
+				$difference = $level - $current_level;
+				for($i=0;$i<$difference;$i++){
+					$this->openElement("blockquote");
+				}
+			} else {
+				$difference = $current_level - $level;
+				for($i=0;$i<$difference;$i++){
+					$this->closeElement("blockquote");
+				}
+			}
+			
+			return;
+		}
+		
+		if($token[0]==="endBlockquotes"){
+			while(in_array("blockquote", $this->open_elements)){
+				$this->closeElement("blockquote");
+			}
 			return;
 		}
 		

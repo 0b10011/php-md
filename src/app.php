@@ -44,15 +44,21 @@ class Markdown {
 		
 		$name = array_key_exists("name", $node) ? $node["name"] : null;
 		
+		$attributes = array_key_exists("attributes", $node) ? $node["attributes"] : null;
+		
 		$empty = array_key_exists("empty", $node) ? $node["empty"] : null;
 		
-		if($empty){
-			$html .= "<$name>";
-			return $html;
+		if($name!=="#ROOT"){
+			$node_attributes = "";
+			if($attributes) foreach($attributes as $attribute => $value){
+				$node_attributes .= ' '.$attribute.'="'.htmlspecialchars($value).'"';
+			}
+			$html .= "<$name$node_attributes>";
+			unset($node_attributes);
 		}
 		
-		if($name!=="#ROOT"){
-			$html .= "<$name>";
+		if($empty){
+			return $html;
 		}
 		
 		foreach($node["children"] as $child){
@@ -90,6 +96,10 @@ class Tokenizer {
 		"startCode" => "startCode",
 		"inCode" => "inCode",
 		"atxHeader" => "atxHeader",
+		"startLink" => "startLink",
+		"linkText" => "linkText",
+		"linkUrl" => "linkUrl",
+		"linkTitle" => "linkTitle",
 		"ul" => "ul",
 		"ol" => "ol",
 	);
@@ -180,7 +190,7 @@ class Tokenizer {
 	
 	protected function match($pattern){
 		$matches = null;
-		preg_match("/$pattern/", mb_substr($this->markdown, $this->position), $matches);
+		preg_match("/^$pattern/", mb_substr($this->markdown, $this->position), $matches);
 		return $matches;
 	}
 	
@@ -408,6 +418,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+			$this->state = "startLink";
+			$this->backup();
+			return;
+		}
+		
 		if($ch===" "){
 			if($this->consume(" ")&&$this->next()==="\n"){
 				$this->backup(2);
@@ -470,6 +486,92 @@ class Tokenizer {
 		$ch = $this->consume();
 		
 		$this->tokens[] = array("character", $ch);
+	}
+	
+	protected function startLink(){
+		$ch = $this->consume();
+		
+		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\\)\\n]+\\)")){
+			throw(new BadMethodCallException("In startLink state, but invalid pattern found"));
+		}
+		
+		$this->state = "linkText";
+		$this->tokens[] = array("startLink");
+	}
+	
+	protected function linkText(){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			$this->tokens[] = array("character", $ch);
+			return;
+		}
+		
+		if($ch==="]"){
+			// Ignore spaces
+			$this->consume(" ");
+			
+			// Make sure next character is (
+			if($this->next()!=="("){
+				throw(new BadMethodCallException("In startLink state, but ( not found after ]"));
+			}
+			
+			// Consume (
+			$this->consume();
+			$this->state = "linkUrl";
+			return;
+		}
+		
+		$this->tokens[] = array("character", $ch);
+	}
+	
+	protected function linkUrl($url = ''){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			return $this->linkUrl($url.$ch);
+		}
+		
+		if($this->match(" *\"")){
+			$this->consume(" ");
+			$this->consume(); // Consume "
+			$this->tokens[] = array("linkUrl", $url.$ch);
+			$this->state = "linkTitle";
+			return;
+		}
+		
+		if($this->match(" *\)")){
+			$this->consume(" ");
+			$this->consume(); // Consume )
+			$this->tokens[] = array("linkUrl", $url.$ch);
+			$this->state = "mol";
+			$this->tokens[] = array("endLink");
+			return;
+		}
+		
+		return $this->linkUrl($url.$ch);
+	}
+	
+	protected function linkTitle($title = ''){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			return $this->linkTitle($title.$ch);
+		}
+		
+		if($ch==='"'){
+			if($this->consume()!==")"){
+				throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
+			}
+			$this->tokens[] = array("linkTitle", $title);
+			$this->state = "mol";
+			return;
+		}
+		
+		return $this->linkTitle($title.$ch);
 	}
 	
 	protected function afterSpace(){
@@ -576,6 +678,7 @@ class Parser {
 			"name" => $elt,
 			"type" => array_key_exists($elt, $this->element_types) ? $this->element_types[$elt] : "inline",
 			"empty" => true,
+			"attributes" => array(),
 		);
 	}
 	
@@ -586,6 +689,7 @@ class Parser {
 			"name" => $elt,
 			"type" => array_key_exists($elt, $this->element_types) ? $this->element_types[$elt] : "inline",
 			"empty" => false,
+			"attributes" => array(),
 			"children" => array(),
 		);
 		$this->current =& $this->current["children"][count($this->current["children"])-1];
@@ -659,6 +763,26 @@ class Parser {
 			$this->openElement($formatting_element);
 		}
 		
+	}
+	
+	protected function &getAncestor($elt){
+		$current =& $this->current;
+		
+		while($current["name"]!=="#ROOT"){
+			
+			if($current["name"]===$elt){
+				return $current;
+			}
+			
+			$current =& $current["parent"];
+		}
+		
+		// Not found
+		return null;
+	}
+	
+	protected function setAttribute(&$node, $attribute, $value){
+		$node["attributes"][$attribute] = $value;
 	}
 	
 	protected function closeBlock(){
@@ -768,6 +892,34 @@ class Parser {
 				return;
 			}
 			$this->closeElement("code");
+			return;
+		}
+		
+		if($token[0]==="startLink"){
+			if(in_array("a", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->openElement("a");
+			return;
+		}
+		
+		if($token[0]==="endLink"){
+			if(!in_array("a", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->closeElement("a");
+			return;
+		}
+		
+		if($token[0]==="linkUrl"){
+			$this->setAttribute($this->getAncestor("a"), "href", $token[1]);
+			return;
+		}
+		
+		if($token[0]==="linkTitle"){
+			$this->setAttribute($this->getAncestor("a"), "title", $token[1]);
 			return;
 		}
 		

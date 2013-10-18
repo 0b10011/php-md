@@ -50,8 +50,11 @@ class Markdown {
 		
 		if($name!=="#ROOT"){
 			$node_attributes = "";
-			if($attributes) foreach($attributes as $attribute => $value){
-				$node_attributes .= ' '.$attribute.'="'.htmlspecialchars($value).'"';
+			if($attributes){
+				ksort($attributes);
+				foreach($attributes as $attribute => $value){
+					$node_attributes .= ' '.$attribute.'="'.htmlspecialchars($value).'"';
+				}
 			}
 			$html .= "<$name$node_attributes>";
 			unset($node_attributes);
@@ -100,6 +103,10 @@ class Tokenizer {
 		"linkText" => "linkText",
 		"linkUrl" => "linkUrl",
 		"linkTitle" => "linkTitle",
+		"startImage" => "startImage",
+		"imageAlt" => "imageAlt",
+		"imageUrl" => "imageUrl",
+		"imageTitle" => "imageTitle",
 		"ul" => "ul",
 		"ol" => "ol",
 	);
@@ -418,6 +425,12 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="!"&&$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+			$this->state = "startImage";
+			$this->backup();
+			return;
+		}
+		
 		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
 			$this->state = "startLink";
 			$this->backup();
@@ -491,7 +504,7 @@ class Tokenizer {
 	protected function startLink(){
 		$ch = $this->consume();
 		
-		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\\)\\n]+\\)")){
+		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
 			throw(new BadMethodCallException("In startLink state, but invalid pattern found"));
 		}
 		
@@ -514,7 +527,7 @@ class Tokenizer {
 			
 			// Make sure next character is (
 			if($this->next()!=="("){
-				throw(new BadMethodCallException("In startLink state, but ( not found after ]"));
+				throw(new BadMethodCallException("In linkText state, but ( not found after ]"));
 			}
 			
 			// Consume (
@@ -568,10 +581,99 @@ class Tokenizer {
 			}
 			$this->tokens[] = array("linkTitle", $title);
 			$this->state = "mol";
+			$this->tokens[] = array("endLink");
 			return;
 		}
 		
 		return $this->linkTitle($title.$ch);
+	}
+	
+	protected function startImage(){
+		$ch = $this->consume();
+		
+		if($ch!=="!"||!$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+			throw(new BadMethodCallException("In startImage state, but invalid pattern found"));
+		}
+		
+		$this->consume(); // Consume [
+		$this->state = "imageAlt";
+		$this->tokens[] = array("startImage");
+	}
+	
+	protected function imageAlt($alt = ''){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			return $this->imageAlt($alt.$ch);
+		}
+		
+		if($ch==="]"){
+			// Ignore spaces
+			$this->consume(" ");
+			
+			// Make sure next character is (
+			if($this->next()!=="("){
+				throw(new BadMethodCallException("In imageAlt state, but ( not found after ]"));
+			}
+			
+			// Consume (
+			$this->consume();
+			if($alt!=='') $this->tokens[] = array("imageAlt", $alt);
+			$this->state = "imageUrl";
+			return;
+		}
+		
+		return $this->imageAlt($alt.$ch);
+	}
+	
+	protected function imageUrl($url = ''){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			return $this->imageUrl($url.$ch);
+		}
+		
+		if($this->match(" *\"")){
+			$this->consume(" ");
+			$this->consume(); // Consume "
+			$this->tokens[] = array("imageUrl", $url.$ch);
+			$this->state = "imageTitle";
+			return;
+		}
+		
+		if($this->match(" *\)")){
+			$this->consume(" ");
+			$this->consume(); // Consume )
+			$this->tokens[] = array("imageUrl", $url.$ch);
+			$this->state = "mol";
+			$this->tokens[] = array("endImage");
+			return;
+		}
+		
+		return $this->imageUrl($url.$ch);
+	}
+	
+	protected function imageTitle($title = ''){
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			return $this->imageTitle($title.$ch);
+		}
+		
+		if($ch==='"'){
+			if($this->consume()!==")"){
+				throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
+			}
+			$this->tokens[] = array("imageTitle", $title);
+			$this->state = "mol";
+			$this->tokens[] = array("endImage");
+			return;
+		}
+		
+		return $this->imageTitle($title.$ch);
 	}
 	
 	protected function afterSpace(){
@@ -603,6 +705,10 @@ class Parser {
 		"data" => "data",
 		"afterSpace" => "afterSpace",
 		"afterNewline" => "afterNewline",
+		"inImage" => "inImage",
+		"inImageAlt" => "inImageAlt",
+		"inImageUrl" => "inImageUrl",
+		"inImageTitle" => "inImageTitle",
 	);
 	
 	public function __construct(array $tokens){
@@ -923,6 +1029,17 @@ class Parser {
 			return;
 		}
 		
+		if($token[0]==="startImage"){
+			$this->in_image = true;
+			if(in_array("img", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->appendElement("img");
+			$this->state = "inImage";
+			return;
+		}
+		
 		if($token[0]==="startEm"){
 			if(in_array("em", $this->open_elements)){
 				// Ignore
@@ -971,6 +1088,52 @@ class Parser {
 		
 		if($token[0]==="character"){
 			$this->appendText($token[1]);
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function inImage(){
+		$token = $this->consume();
+		
+		if($token[0]==="imageAlt"){
+			$this->setAttribute($this->current["children"][count($this->current["children"])-1], "alt", $token[1]);
+			$this->state = "inImageUrl";
+			return;
+		}
+		
+		if($token[0]==="imageUrl"){
+			$this->setAttribute($this->current["children"][count($this->current["children"])-1], "src", $token[1]);
+			$this->state = "inImageTitle";
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function inImageUrl(){
+		$token = $this->consume();
+		
+		if($token[0]==="imageUrl"){
+			$this->setAttribute($this->current["children"][count($this->current["children"])-1], "src", $token[1]);
+			$this->state = "inImageTitle";
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function inImageTitle(){
+		$token = $this->consume();
+		
+		if($token[0]==="imageTitle"){
+			$this->setAttribute($this->current["children"][count($this->current["children"])-1], "title", $token[1]);
+			return;
+		}
+		
+		if($token[0]==="endImage"){
+			$this->state = "data";
 			return;
 		}
 		

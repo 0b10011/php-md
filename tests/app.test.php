@@ -172,6 +172,30 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo [bar](/hello/ "world" baz)</p>', $markdown->toHTML());
 	}
 	
+	public function testImage(){
+		$text = "foo ![bar](/hello/)";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <img alt="bar" src="/hello/"></p>', $markdown->toHTML());
+	}
+	
+	public function testImageNoAlt(){
+		$text = "foo ![](/hello/)";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <img src="/hello/"></p>', $markdown->toHTML());
+	}
+	
+	public function testImageTitle(){
+		$text = "foo ![bar](/hello/ \"world\")";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo <img alt="bar" src="/hello/" title="world"></p>', $markdown->toHTML());
+	}
+	
+	public function testImageInvalid(){
+		$text = "foo ![bar](/hello/ \"world\" baz)";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo ![bar](/hello/ "world" baz)</p>', $markdown->toHTML());
+	}
+	
 	public function testEmMultiple(){
 		$text = "*foo* *bar*";
 		$markdown = new Markdown($text);

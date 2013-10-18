@@ -7,6 +7,12 @@ require_once(MARKDOWN_SOURCE.'/app.php');
 
 class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
+	public function testHtmlEscaping(){
+		$text = "<&";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>&lt;&amp;</p>', $markdown->toHTML());
+	}
+	
 	public function testParagraphs(){
 		$text = "foo\nbar\n\nhello\n\n\nworld";
 		$markdown = new Markdown($text);

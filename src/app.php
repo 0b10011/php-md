@@ -66,7 +66,7 @@ class Markdown {
 		
 		foreach($node["children"] as $child){
 			if($child["name"]==="#TEXT"){
-				$html .= $child["value"];
+				$html .= $this->escapeCharForHtml($child["value"]);
 				continue;
 			}
 			
@@ -78,6 +78,28 @@ class Markdown {
 		}
 		
 		return $html;
+	}
+	
+	/**
+	 * 
+	 * @param string $ch Only one character can be escaped at a time
+	 * @return string Returns string escaped for placement as text in HTML. That is, this
+	 * is not appropriate for characters that will be part of an HTML attribute value.
+	 */
+	protected function escapeCharForHtml($ch){
+		if(mb_strlen($ch)!==1){
+			throw(new LengthException("String `$ch` is not one character long"));
+		}
+		
+		if($ch==="<"){
+			return "&lt;";
+		}
+		
+		if($ch==="&"){
+			return "&amp;";
+		}
+		
+		return $ch;
 	}
 }
 

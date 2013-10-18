@@ -990,7 +990,7 @@ class Parser {
 			
 			// Get what level we should go to
 			$level = 1;
-			while($this->next()[0]==="startBlockquote"){
+			while(($next = $this->next())&&$next[0]==="startBlockquote"){
 				$this->consume();
 				$level++;
 			}

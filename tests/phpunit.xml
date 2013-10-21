@@ -17,6 +17,7 @@
 			<group>autolinks</group>
 			<group>codeblock</group>
 			<group>referencelinks</group>
+			<group>official</group>
 		</exclude>
 	</groups>
 	

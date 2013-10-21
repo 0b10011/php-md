@@ -106,13 +106,11 @@ class Tokenizer {
 	protected $position = 0;
 	protected $last_consumed = false;
 	protected $loop_detect = array();
-	protected $state = "start";
+	protected $state = "newBlock";
 	protected $states = array(
-		"start" => "start",
-		"mol" => "mol",
+		"newBlock" => "newBlock",
 		"newLine" => "newLine",
-		"afterNewLine" => "afterNewLine",
-		"startParagraph" => "startParagraph",
+		"inLine" => "inLine",
 		"afterSpace" => "afterSpace",
 		"startCode" => "startCode",
 		"inCode" => "inCode",
@@ -237,17 +235,11 @@ class Tokenizer {
 		return $matches;
 	}
 	
-	protected function start(){
+	protected function newBlock(){
 		$ch = $this->consume();
 
 		if($ch==="\n"){
 			// Ignore
-			return;
-		}
-		
-		if($ch==="#"){
-			$this->backup();
-			$this->state = "atxHeader";
 			return;
 		}
 		
@@ -263,186 +255,12 @@ class Tokenizer {
 			return;
 		}
 		
-		if($ch===">"){
-			$level = 1;
-			do {
-				$this->consume(" "); // Ignore whitespace
-				$level += $matched = $this->consume(">");
-			} while($matched);
-			
-			for($i=0;$i<$level;$i++){
-				$this->tokens[] = array("startBlockquote");
-			}
-			
-			$this->tokens[] = array("startParagraph");
-			$this->state = "startParagraph";
-			return;
-		}
-		
 		$this->backup();
-		$this->tokens[] = array("startParagraph");
-		$this->state = "startParagraph";
+		$this->state = "newLine";
 	}
 	
 	protected function newLine(){
 		$ch = $this->consume();
-		
-		if($ch==="\n"){
-			$new_block = false;
-			if($this->consume("\n")){
-				$this->tokens[] = array("endBlock");
-				$new_block = true;
-			}
-			
-			if($new_block&&$this->next()!==">"){
-				$this->tokens[] = array("endBlockquotes");
-			}
-			
-			if($new_block&&$this->next()==="#"){
-				$this->state = "atxHeader";
-				return;
-			}
-			
-			if(preg_match("/\d/", $this->next())&&$this->match("\d*\. ")){
-				$this->state = "ol";
-				return;
-			}
-			
-			if($this->next()==="*"||$this->next()==="-"||$this->next()==="+"){
-				$this->consume();
-				$consumed = $this->consume(" ") + 1; // Account for */-/+ consumed
-				
-				$ch = $this->next();
-				$this->backup($consumed);
-				
-				if($ch!=="*"&&$ch!=="-"&&$ch!=="+"){
-					$this->state = "ul";
-					return;
-				}
-			}
-			
-			if($this->next()===">"){
-				$level = 0;
-				do {
-					$level += $matched = $this->consume(">");
-					$this->consume(" "); // Ignore whitespace
-				} while($matched);
-
-				for($i=0;$i<$level;$i++){
-					$this->tokens[] = array("startBlockquote");
-				}
-
-				$this->tokens[] = array("startParagraph");
-				$this->state = "startParagraph";
-				return;
-			}
-			
-			if($new_block){
-				$this->tokens[] = array("startParagraph");
-				$this->state = "startParagraph";
-				return;
-			}
-			
-			$this->state = "mol";
-			$this->tokens[] = array("character", " ");
-			return;
-		}
-		
-		if($ch===" "&&$this->consume(" ")){
-			$consumed = $this->consume("\n");
-			if($consumed===1){
-				$this->tokens[] = array("newline");
-				$this->state = "afterNewLine";
-				return;
-			} elseif($consumed){
-				$this->tokens[] = array("endBlock");
-				$this->tokens[] = array("startParagraph");
-				$this->state = "startParagraph";
-				return;
-			}
-		}
-		
-		throw(new BadMethodCallException("In newLine state, but ch `$ch` is not a new line"));
-	}
-	
-	protected function afterNewLine(){
-		$ch = $this->consume();
-
-		if($ch==="\n"){
-			// Ignore
-			return;
-		}
-		
-		if($ch===" "){
-			// Ignore
-			return;
-		}
-		
-		$this->backup();
-		$this->state = "mol";
-	}
-	
-	protected function ul(){
-		$ch = $this->consume();
-		
-		if($ch!=="*"&&$ch!=="-"&&$ch!=="+"){
-			throw(new BadMethodCallException("In ul state, but no *, -, or + could be consumed"));
-		}
-		
-		// Ensure at least one leading space - ignore additional leading spaces
-		if(!$this->consume(" ")){
-			throw(new BadMethodCallException("In ul state, but no space after $ch could be consumed"));
-		}
-		
-		$this->tokens[] = array("ul", "$ch");
-		$this->state = "mol";
-	}
-	
-	protected function ol(){
-		$ch = $this->consume();
-		
-		if(!preg_match("/\d/", $ch)||!$this->match("\d*\. ")){
-			throw(new BadMethodCallException("In ol state, but invalid pattern found"));
-		}
-		
-		// Consume all digits and period
-		do {
-			$ch = $this->consume();
-		} while(preg_match("/\d/", $ch));
-		
-		// Consume all leading whitespace
-		$this->consume(" ");
-		
-		$this->tokens[] = array("ol");
-		$this->state = "mol";
-	}
-	
-	protected function atxHeader(){
-		$consumed = $this->consume("#");
-		
-		if(!$consumed){
-			throw(new BadMethodCallException("In atxHeader state, but no # could be consumed"));
-		}
-		
-		if($consumed>6){
-			$this->backup($consumed-6);
-			$consumed = 6;
-		}
-		
-		// Get rid of leading whitespace
-		$this->consume(" ");
-		
-		$this->tokens[] = array("atxHeader", "$consumed");
-		$this->state = "mol";
-	}
-	
-	protected function startParagraph(){
-		$ch = $this->consume();
-
-		if($ch==="\n"){
-			// Ignore
-			return;
-		}
 		
 		if($ch==="-"||$ch==="*"){
 			
@@ -457,6 +275,7 @@ class Tokenizer {
 			// If at least 3 $ch were consumed and followed by two new lines, add "rule" token
 			if($consumed>=3&&$this->next()==="\n"&&$this->next(2)==="\n"){
 				$this->tokens[] = array("rule", $ch);
+				$this->state = "newBlock";
 				return;
 			}
 			
@@ -466,16 +285,41 @@ class Tokenizer {
 			unset($consumed, $skipped, $found);
 		}
 		
+		if($ch==="#"){
+			$this->backup();
+			$this->state = "atxHeader";
+			return;
+		}
+		
+		if($ch===">"){
+			$level = 1;
+			do {
+				$this->consume(" "); // Ignore whitespace
+				$level += $matched = $this->consume(">");
+			} while($matched);
+			
+			for($i=0;$i<$level;$i++){
+				$this->tokens[] = array("startBlockquote");
+			}
+			
+			$this->state = "newBlock";
+			return;
+		}
+		
 		$this->backup();
-		$this->state = "afterSpace";
+		$this->state = "inLine";
 	}
 	
-	protected function mol(){
+	protected function inLine(){
 		$ch = $this->consume();
 		
-		if($ch==="\n"){
+		if($ch==="\n"&&$this->consume("\n")){
+			$this->state = "newBlock";
+			return;
+		}
+		
+		if($ch===" "&&$this->consume(" ")&&$this->consume("\n")){
 			$this->state = "newLine";
-			$this->backup();
 			return;
 		}
 		
@@ -533,6 +377,78 @@ class Tokenizer {
 		}
 		
 		$this->tokens[] = array("character", $ch);
+	}
+	
+	protected function afterSpace(){
+		$ch = $this->consume();
+		
+		if($ch==="*"||$ch==="_"){
+			$next = $this->next();
+			if($next===$ch){
+				$this->consume();
+				$this->tokens[] = array("startStrong");
+				return;
+			}
+			$this->tokens[] = array("startEm", $ch);
+			return;
+		}
+		
+		$this->backup();
+		$this->state = "inLine";
+	}
+	
+	protected function ul(){
+		$ch = $this->consume();
+		
+		if($ch!=="*"&&$ch!=="-"&&$ch!=="+"){
+			throw(new BadMethodCallException("In ul state, but no *, -, or + could be consumed"));
+		}
+		
+		// Ensure at least one leading space - ignore additional leading spaces
+		if(!$this->consume(" ")){
+			throw(new BadMethodCallException("In ul state, but no space after $ch could be consumed"));
+		}
+		
+		$this->tokens[] = array("ul", "$ch");
+		$this->state = "inLine";
+	}
+	
+	protected function ol(){
+		$ch = $this->consume();
+		
+		if(!preg_match("/\d/", $ch)||!$this->match("\d*\. ")){
+			throw(new BadMethodCallException("In ol state, but invalid pattern found"));
+		}
+		
+		// Consume all digits and period
+		do {
+			$ch = $this->consume();
+		} while(preg_match("/\d/", $ch));
+		
+		// Consume all leading whitespace
+		$this->consume(" ");
+		
+		$this->tokens[] = array("ol");
+		$this->state = "start";
+	}
+	
+	protected function atxHeader(){
+		$consumed = $this->consume("#");
+		
+		if(!$consumed){
+			throw(new BadMethodCallException("In atxHeader state, but no # could be consumed"));
+		}
+		
+		if($consumed>6){
+			$this->backup($consumed-6);
+			$consumed = 6;
+		}
+		
+		// Get rid of leading whitespace
+		$this->consume(" ");
+		
+		$this->tokens[] = array("atxHeader", "$consumed");
+		$this->state = "start";
 	}
 	
 	protected $code_backticks = null;
@@ -629,7 +545,7 @@ class Tokenizer {
 			$this->consume(" ");
 			$this->consume(); // Consume )
 			$this->tokens[] = array("linkUrl", $url.$ch);
-			$this->state = "mol";
+			$this->state = "inLine";
 			$this->tokens[] = array("endLink");
 			return;
 		}
@@ -650,7 +566,7 @@ class Tokenizer {
 				throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
 			}
 			$this->tokens[] = array("linkTitle", $title);
-			$this->state = "mol";
+			$this->state = "inLine";
 			$this->tokens[] = array("endLink");
 			return;
 		}
@@ -717,7 +633,7 @@ class Tokenizer {
 			$this->consume(" ");
 			$this->consume(); // Consume )
 			$this->tokens[] = array("imageUrl", $url.$ch);
-			$this->state = "mol";
+			$this->state = "inLine";
 			$this->tokens[] = array("endImage");
 			return;
 		}
@@ -738,30 +654,12 @@ class Tokenizer {
 				throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
 			}
 			$this->tokens[] = array("imageTitle", $title);
-			$this->state = "mol";
+			$this->state = "inLine";
 			$this->tokens[] = array("endImage");
 			return;
 		}
 		
 		return $this->imageTitle($title.$ch);
-	}
-	
-	protected function afterSpace(){
-		$ch = $this->consume();
-		
-		if($ch==="*"||$ch==="_"){
-			$next = $this->next();
-			if($next===$ch){
-				$this->consume();
-				$this->tokens[] = array("startStrong");
-				return;
-			}
-			$this->tokens[] = array("startEm", $ch);
-			return;
-		}
-		
-		$this->backup();
-		$this->state = "mol";
 	}
 }
 
@@ -999,20 +897,6 @@ class Parser {
 			$token[1] = null;
 		}
 		
-		if($token[0]==="endBlock"){
-			$this->closeBlock();
-			return;
-		}
-		
-		if($token[0]==="startParagraph"){
-			if(in_array("p", $this->open_elements)){
-				// Ignore
-				return;
-			}
-			$this->openElement("p");
-			return;
-		}
-		
 		if($token[0]==="startBlockquote"){
 			
 			// Get what level we should go to
@@ -1161,6 +1045,9 @@ class Parser {
 		}
 		
 		if($token[0]==="startEm"){
+			if(!in_array("p", $this->open_elements)){
+				$this->openElement("p");
+			}
 			if(in_array("em", $this->open_elements)){
 				// Ignore
 				return;
@@ -1170,6 +1057,9 @@ class Parser {
 		}
 		
 		if($token[0]==="toggleEm"){
+			if(!in_array("p", $this->open_elements)){
+				$this->openElement("p");
+			}
 			if(!in_array("em", $this->open_elements)){
 				$this->openElement("em");
 				return;
@@ -1179,6 +1069,9 @@ class Parser {
 		}
 		
 		if($token[0]==="startStrong"){
+			if(!in_array("p", $this->open_elements)){
+				$this->openElement("p");
+			}
 			if(in_array("strong", $this->open_elements)){
 				// Ignore
 				return;
@@ -1188,6 +1081,9 @@ class Parser {
 		}
 		
 		if($token[0]==="toggleStrong"){
+			if(!in_array("p", $this->open_elements)){
+				$this->openElement("p");
+			}
 			if(!in_array("strong", $this->open_elements)){
 				$this->openElement("strong");
 				return;
@@ -1207,9 +1103,18 @@ class Parser {
 		}
 		
 		if($token[0]==="character"){
+			if(!in_array("p", $this->open_elements)){
+				$this->openElement("p");
+			}
 			$this->appendText($token[1]);
 			return;
 		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function newLine(){
+		$token = $this->consume();
 		
 		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
 	}

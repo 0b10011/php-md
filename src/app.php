@@ -478,13 +478,13 @@ class Tokenizer {
 			return;
 		}
 		
-		if($ch==="!"&&$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+		if($ch==="!"&&$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			$this->state = "startImage";
 			$this->backup();
 			return;
 		}
 		
-		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			$this->state = "startLink";
 			$this->backup();
 			return;
@@ -557,7 +557,7 @@ class Tokenizer {
 	protected function startLink(){
 		$ch = $this->consume();
 		
-		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			throw(new BadMethodCallException("In startLink state, but invalid pattern found"));
 		}
 		
@@ -644,7 +644,7 @@ class Tokenizer {
 	protected function startImage(){
 		$ch = $this->consume();
 		
-		if($ch!=="!"||!$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"[^\"]+\")?\\)")){
+		if($ch!=="!"||!$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			throw(new BadMethodCallException("In startImage state, but invalid pattern found"));
 		}
 		

@@ -185,9 +185,9 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	public function testLinkTitle(){
-		$text = "foo [bar](/hello/ \"world\")";
+		$text = "foo [bar](/hello/ \"world<\\\">\")";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo <a href="/hello/" title="world">bar</a></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo <a href="/hello/" title="world&lt;&quot;&gt;">bar</a></p>', $markdown->toHTML());
 	}
 	
 	public function testLinkInvalid(){
@@ -209,9 +209,9 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	public function testImageTitle(){
-		$text = "foo ![bar](/hello/ \"world\")";
+		$text = "foo ![bar](/hello/ \"world<\\\">\")";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo <img alt="bar" src="/hello/" title="world"></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo <img alt="bar" src="/hello/" title="world&lt;&quot;&gt;"></p>', $markdown->toHTML());
 	}
 	
 	public function testImageInvalid(){

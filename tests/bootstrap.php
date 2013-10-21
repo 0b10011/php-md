@@ -2,5 +2,5 @@
 
 namespace bfrohs;
 
-define('MARKDOWN_SOURCE', dirname(dirname(__FILE__)).'/src');
-define('MARKDOWN_TESTS', dirname(__FILE__));
+$GLOBALS['MARKDOWN_SOURCE'] = dirname(dirname(__FILE__)).'/src';
+$GLOBALS['MARKDOWN_TEST'] = dirname(__FILE__);

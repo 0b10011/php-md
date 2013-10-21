@@ -2,7 +2,7 @@
 
 namespace bfrohs\markdown;
 
-require_once(MARKDOWN_SOURCE."/exceptions.php");
+require_once($GLOBALS['MARKDOWN_SOURCE']."/exceptions.php");
 
 class Markdown {
 	
@@ -105,6 +105,7 @@ class Tokenizer {
 	protected $tokens = array();
 	protected $position = 0;
 	protected $last_consumed = false;
+	protected $loop_detect = array();
 	protected $state = "start";
 	protected $states = array(
 		"start" => "start",
@@ -160,6 +161,15 @@ class Tokenizer {
 			
 			$consumed = 0;
 			while(mb_substr($this->markdown, $this->position, 1, $this->encoding)===$toConsume){
+				if(!array_key_exists($this->position, $this->loop_detect)){
+					$this->loop_detect[$this->position] = 1;
+				} else {
+					$this->loop_detect[$this->position]++;
+				}
+				if($this->loop_detect[$this->position]>5){
+					throw(new LogicException("Infinite loop detected at position $this->position"));
+				}
+				
 				$this->position++;
 				$consumed++;
 			}
@@ -168,6 +178,15 @@ class Tokenizer {
 		}
 		
 		$ch = mb_substr($this->markdown, $this->position, 1, $this->encoding);
+		
+		if(!array_key_exists($this->position, $this->loop_detect)){
+			$this->loop_detect[$this->position] = 1;
+		} else {
+			$this->loop_detect[$this->position]++;
+		}
+		if($this->loop_detect[$this->position]>5){
+			throw(new LogicException("Infinite loop detected at position $this->position"));
+		}
 		
 		if($ch===""){
 			throw(new OutOfRangeException("consume() called but no characters left"));
@@ -753,6 +772,7 @@ class Parser {
 	protected $tree = null;
 	protected $current = null;
 	protected $position = 0;
+	protected $loop_detect = array();
 	protected $state = "data";
 	protected $states = array(
 		"data" => "data",
@@ -793,6 +813,15 @@ class Parser {
 		}
 		
 		$token = $this->tokens[$this->position];
+		
+		if(!array_key_exists($this->position, $this->loop_detect)){
+			$this->loop_detect[$this->position] = 1;
+		} else {
+			$this->loop_detect[$this->position]++;
+		}
+		if($this->loop_detect[$this->position]>5){
+			throw(new LogicException("Infinite loop detected at position $this->position"));
+		}
 		
 		$this->position++;
 		

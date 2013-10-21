@@ -3,7 +3,7 @@
 use bfrohs\markdown\Markdown as Markdown;
 
 // Include array functions
-require_once(MARKDOWN_SOURCE.'/app.php');
+require_once($GLOBALS['MARKDOWN_SOURCE'].'/app.php');
 
 class MarkdownTest extends PHPUnit_Framework_TestCase {
 	

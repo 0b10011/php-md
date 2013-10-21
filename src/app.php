@@ -130,7 +130,7 @@ class Tokenizer {
 	);
 	
 	public function __construct($markdown, $encoding){
-		$this->markdown = $markdown;
+		$this->markdown = str_replace("\t", "    ", $markdown);
 		$this->encoding = $encoding;
 		
 		$length = mb_strlen($this->markdown);
@@ -321,7 +321,7 @@ class Tokenizer {
 				}
 			}
 			
-			if($new_block&&$this->next()===">"){
+			if($this->next()===">"){
 				$level = 0;
 				do {
 					$level += $matched = $this->consume(">");
@@ -497,7 +497,7 @@ class Tokenizer {
 			return;
 		}
 		
-		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
+		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]*(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			$this->state = "startLink";
 			$this->backup();
 			return;
@@ -570,7 +570,7 @@ class Tokenizer {
 	protected function startLink(){
 		$ch = $this->consume();
 		
-		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
+		if($ch!=="["||!$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]*(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
 			throw(new BadMethodCallException("In startLink state, but invalid pattern found"));
 		}
 		
@@ -621,6 +621,10 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch===")"){ // Handle empty url
+			$this->backup();
+			$ch = "";
+		}
 		if($this->match(" *\)")){
 			$this->consume(" ");
 			$this->consume(); // Consume )

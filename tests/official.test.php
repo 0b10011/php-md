@@ -12,6 +12,10 @@ require_once($GLOBALS['MARKDOWN_SOURCE'].'/app.php');
  */
 class OfficialTest extends PHPUnit_Framework_TestCase {
 	
+	/**
+	 * @group official
+	 * @group entities
+	 **/
 	public function testAmpsAndAngleEncoding(){
 		$text = <<<'MDTEST'
 AT&T has an ampersand in their name.
@@ -59,6 +63,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group autolinks
+	 **/
 	public function testAutoLinks(){
 		$text = <<<'MDTEST'
 Link: <http://example.com/>.
@@ -99,6 +107,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group codeblock
+	 **/
 	public function testBackslashEscapes(){
 		$text = <<<'MDTEST'
 These should all get escaped:
@@ -314,6 +326,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group codeblock
+	 **/
 	public function testBlockquotesWithCodeblocks(){
 		$text = <<<'MDTEST'
 > Example:
@@ -349,6 +365,9 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 **/
 	public function testHardWrappedParagraphsWithListLikeLines(){
 		$text = <<<'MDTEST'
 In Markdown 1.0.0 and earlier. Version
@@ -374,6 +393,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group codeblock
+	 **/
 	public function testHorizontalRules(){
 		$text = <<<'MDTEST'
 Dashes:
@@ -521,6 +544,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group html
+	 **/
 	public function testInlineHtmlAdvanced(){
 		$text = <<<'MDTEST'
 Simple block on one line:
@@ -558,6 +585,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group html
+	 **/
 	public function testInlineHtmlComments(){
 		$text = <<<'MDTEST'
 Paragraph one.
@@ -593,6 +624,11 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group html
+	 * @group codeblock
+	 **/
 	public function testInlineHtmlSimple(){
 		$text = <<<'MDTEST'
 Here's a simple block:
@@ -743,6 +779,9 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 **/
 	public function testLinksInlineStyle(){
 		$text = <<<'MDTEST'
 Just a [URL](/url/).
@@ -770,6 +809,11 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group codeblock
+	 * @group referencelinks
+	 **/
 	public function testLinksReferenceStyle(){
 		$text = <<<'MDTEST'
 Foo [bar] [1].
@@ -828,6 +872,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group referencelinks
+	 **/
 	public function testLiteralQuotesInTitles(){
 		$text = <<<'MDTEST'
 Foo [bar][].
@@ -847,6 +895,12 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group html
+	 * @group codeblock
+	 * @group referencelinks
+	 **/
 	public function testMarkdownDocumentationBasics(){
 		$text = <<<'MDTEST'
 Markdown: Basics
@@ -1476,8 +1530,14 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group html
+	 * @group autolinks
+	 * @group codeblock
+	 * @group referencelinks
+	 **/
 	public function testMarkdownDocumentationSyntax(){
-		$this->markTestSkipped("This currently causes an out of memory error. Enable when fixed.");
 		$text = <<<'MDTEST'
 Markdown: Syntax
 ================
@@ -3316,6 +3376,9 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 **/
 	public function testNestedBlockquotes(){
 		$text = <<<'MDTEST'
 > foo
@@ -3339,6 +3402,9 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 **/
 	public function testOrderedAndUnorderedLists(){
 		$text = <<<'MDTEST'
 ## Unordered
@@ -3607,6 +3673,9 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 **/
 	public function testStrongAndEmTogether(){
 		$text = <<<'MDTEST'
 ***This is strong and em.***
@@ -3630,6 +3699,10 @@ MDTEST;
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
 	}
 	
+	/**
+	 * @group official
+	 * @group codeblock
+	 **/
 	public function testTabs(){
 		$text = <<<'MDTEST'
 +	this is a list item

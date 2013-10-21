@@ -10,6 +10,16 @@
 		</testsuite>
 	</testsuites>
 	
+	<groups>
+		<exclude>
+			<group>html</group>
+			<group>entities</group>
+			<group>autolinks</group>
+			<group>codeblock</group>
+			<group>referencelinks</group>
+		</exclude>
+	</groups>
+	
 	<filter>
 		<blacklist>
 			<directory>../vendor</directory>

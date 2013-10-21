@@ -466,14 +466,8 @@ class Tokenizer {
 			unset($consumed, $skipped, $found);
 		}
 		
-		if($ch==="*"){
-			$this->backup();
-			$this->state = "afterSpace";
-			return;
-		}
-		
 		$this->backup();
-		$this->state = "mol";
+		$this->state = "afterSpace";
 	}
 	
 	protected function mol(){

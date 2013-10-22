@@ -31,3 +31,13 @@ $html = $markdown->toHTML();
 
 echo $html; // <p>Some string using <em>markdown</em>.</p>
 ```
+
+# Differences from [Dingus](http://daringfireball.net/projects/markdown/dingus)
+
+- [Inter-element whitespace][] is discarded
+
+- Whitespace is collapsed into a single space
+
+- Empty elements are output without trailing slash (ie, `<br>` instead of `<br />`)
+
+[Inter-element whitespace]: http://www.whatwg.org/specs/web-apps/current-work/multipage/elements.html#inter-element-whitespace

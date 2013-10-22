@@ -758,7 +758,7 @@ class Parser {
 	protected function appendElement($elt){
 		$parent =& $this->current;
 		$this->current["children"][] = array(
-			"parent" => $parent,
+			"parent" => &$parent,
 			"name" => $elt,
 			"type" => array_key_exists($elt, $this->element_types) ? $this->element_types[$elt] : "inline",
 			"empty" => true,
@@ -884,7 +884,7 @@ class Parser {
 	protected function appendText($text){
 		$parent =& $this->current;
 		$this->current["children"][] = array(
-			"parent" => $parent,
+			"parent" => &$parent,
 			"name" => "#TEXT",
 			"type" => "text",
 			"value" => $text,

@@ -235,19 +235,15 @@ class Tokenizer {
 	
 	protected function newBlock(){
 		$this->tokens[] = array("newBlock");
+
+		// Ignore extra leading whitespace
+		do {
+			$consumed = $this->consume("\n");
+			$consumed += $this->consume(" ");
+		} while($consumed);
 		
 		$ch = $this->consume();
 
-		if($ch==="\n"){
-			// Ignore
-			return;
-		}
-		
-		if($ch===" "){
-			$this->consume(" ");
-			$ch = $this->consume();
-		}
-		
 		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
 			$this->backup();
 			$this->state = "ol";
@@ -262,12 +258,13 @@ class Tokenizer {
 	protected function newLine($new_block = false){
 		$this->tokens[] = array("newLine");
 		
-		$ch = $this->consume();
+		// Ignore extra leading whitespace
+		do {
+			$consumed = $this->consume("\n");
+			$consumed += $this->consume(" ");
+		} while($consumed);
 		
-		if($ch===" "){
-			$this->consume(" ");
-			$ch = $this->consume();
-		}
+		$ch = $this->consume();
 		
 		if($ch==="-"||$ch==="*"){
 			

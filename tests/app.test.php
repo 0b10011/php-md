@@ -67,7 +67,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	public function testHorizontalRulesAsteriskInvalid2(){
 		$text = "foo\n\n***\nbar";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo</p><p><strong><em> bar</em></strong></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo</p><p><em><strong> bar</strong></em></p>', $markdown->toHTML());
 	}
 	
 	public function testAtxHeaders1(){
@@ -295,7 +295,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	public function testEmStrong(){
 		$text = "foo ***bar***";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo <strong><em>bar</em></strong></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo <em><strong>bar</strong></em></p>', $markdown->toHTML());
 	}
 	
 	public function testEmStrong2(){

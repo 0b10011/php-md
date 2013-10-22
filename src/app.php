@@ -139,8 +139,6 @@ class Tokenizer {
 			$state = $this->states[$this->state];
 			$this->$state();
 		}
-		
-		$this->tokens[] = array("endParagraph");
 	}
 	
 	public function getTokens(){
@@ -236,11 +234,18 @@ class Tokenizer {
 	}
 	
 	protected function newBlock(){
+		$this->tokens[] = array("newBlock");
+		
 		$ch = $this->consume();
 
 		if($ch==="\n"){
 			// Ignore
 			return;
+		}
+		
+		if($ch===" "){
+			$this->consume(" ");
+			$ch = $this->consume();
 		}
 		
 		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
@@ -249,18 +254,20 @@ class Tokenizer {
 			return;
 		}
 		
-		if(($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
-			$this->backup();
-			$this->state = "ul";
-			return;
-		}
-		
 		$this->backup();
 		$this->state = "newLine";
+		return $this->newLine(true);
 	}
 	
-	protected function newLine(){
+	protected function newLine($new_block = false){
+		$this->tokens[] = array("newLine");
+		
 		$ch = $this->consume();
+		
+		if($ch===" "){
+			$this->consume(" ");
+			$ch = $this->consume();
+		}
 		
 		if($ch==="-"||$ch==="*"){
 			
@@ -283,6 +290,12 @@ class Tokenizer {
 			$backup = $skipped + $consumed - 1;
 			if($backup) $this->backup($backup);
 			unset($consumed, $skipped, $found);
+		}
+		
+		if($new_block&&($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
+			$this->backup();
+			$this->state = "ul";
+			return;
 		}
 		
 		if($ch==="#"){
@@ -313,8 +326,13 @@ class Tokenizer {
 	protected function inLine(){
 		$ch = $this->consume();
 		
-		if($ch==="\n"&&$this->consume("\n")){
-			$this->state = "newBlock";
+		if($ch==="\n"){
+			if($this->consume("\n")){
+				$this->state = "newBlock";
+				return;
+			}
+			
+			$this->tokens[] = array("character", " ");
 			return;
 		}
 		
@@ -381,11 +399,19 @@ class Tokenizer {
 	
 	protected function afterSpace(){
 		$ch = $this->consume();
+		$this->state = "inLine";
 		
 		if($ch==="*"||$ch==="_"){
-			$next = $this->next();
-			if($next===$ch){
-				$this->consume();
+			$consumed = $this->consume($ch);
+			if($consumed>2){
+				$this->position = $this->position - ($consumed - 2);
+				$consumed = 2;
+			}
+			if($consumed===2){
+				$this->tokens[] = array("startEm");
+				$this->tokens[] = array("startStrong");
+				return;
+			} elseif($consumed===1){
 				$this->tokens[] = array("startStrong");
 				return;
 			}
@@ -394,7 +420,6 @@ class Tokenizer {
 		}
 		
 		$this->backup();
-		$this->state = "inLine";
 	}
 	
 	protected function ul(){
@@ -429,7 +454,7 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		$this->tokens[] = array("ol");
-		$this->state = "start";
+		$this->state = "newBlock";
 	}
 	
 	protected function atxHeader(){
@@ -448,7 +473,7 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		$this->tokens[] = array("atxHeader", "$consumed");
-		$this->state = "start";
+		$this->state = "inLine";
 	}
 	
 	protected $code_backticks = null;
@@ -750,10 +775,54 @@ class Parser {
 	
 	protected $open_elements = array();
 	protected $element_types = array(
+		"blockquote" => "block",
+		"ul" => "block",
+		"ol" => "block",
+		"li" => "block",
+		"h1" => "block",
+		"h2" => "block",
+		"h3" => "block",
+		"h4" => "block",
+		"h5" => "block",
+		"h6" => "block",
 		"p" => "block",
 		"em" => "formatting",
 		"strong" => "formatting",
+		"a" => "formatting",
 	);
+	protected $super_blocks = array(
+		"blockquote",
+		"ul",
+		"ol",
+		"li",
+	);
+	protected $blocks = array(
+		"p",
+		"h1",
+		"h2",
+		"h3",
+		"h4",
+		"h5",
+		"h6",
+		"li",
+	);
+	protected $formatting = array(
+		"em",
+		"strong",
+		"a",
+	);
+	
+	protected function inBlock(){
+		$elt = $this->current;
+		$in_block = false;
+		do {
+			if(in_array($elt["name"], $this->blocks)){
+				$in_block = true;
+				break;
+			}
+		} while($elt["name"]!=="#ROOT"&&$elt = $elt["parent"]);
+		return $in_block;
+	}
 	
 	protected function appendElement($elt){
 		$parent =& $this->current;
@@ -897,6 +966,20 @@ class Parser {
 			$token[1] = null;
 		}
 		
+		if($token[0]==="newBlock"){
+			if(in_array("p", $this->open_elements)){
+				$this->closeElement("p");
+			}
+			return;
+		}
+		
+		if($token[0]==="newLine"){
+			if(in_array("p", $this->open_elements)){
+				$this->appendElement("br");
+			}
+			return;
+		}
+		
 		if($token[0]==="startBlockquote"){
 			
 			// Get what level we should go to
@@ -937,13 +1020,9 @@ class Parser {
 			return;
 		}
 		
-		if($token[0]==="endParagraph"){
-			$this->closeElement("p");
-			return;
-		}
-		
 		if($token[0]==="rule"){
 			// If in a paragraph, close it
+			$closed_p = false;
 			if(in_array("p", $this->open_elements)){
 				$this->closeElement("p");
 				$closed_p = true;
@@ -951,11 +1030,6 @@ class Parser {
 			
 			// Append <hr>
 			$this->appendElement("hr");
-			
-			// If paragraph was closed, open a new one
-			if($closed_p){
-				$this->openElement("p");
-			}
 			
 			return;
 		}
@@ -991,6 +1065,9 @@ class Parser {
 			if(in_array("code", $this->open_elements)){
 				// Ignore
 				return;
+			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
 			}
 			$this->openElement("code");
 			return;
@@ -1045,7 +1122,7 @@ class Parser {
 		}
 		
 		if($token[0]==="startEm"){
-			if(!in_array("p", $this->open_elements)){
+			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
 			if(in_array("em", $this->open_elements)){
@@ -1057,7 +1134,7 @@ class Parser {
 		}
 		
 		if($token[0]==="toggleEm"){
-			if(!in_array("p", $this->open_elements)){
+			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
 			if(!in_array("em", $this->open_elements)){
@@ -1069,7 +1146,7 @@ class Parser {
 		}
 		
 		if($token[0]==="startStrong"){
-			if(!in_array("p", $this->open_elements)){
+			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
 			if(in_array("strong", $this->open_elements)){
@@ -1081,7 +1158,7 @@ class Parser {
 		}
 		
 		if($token[0]==="toggleStrong"){
-			if(!in_array("p", $this->open_elements)){
+			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
 			if(!in_array("strong", $this->open_elements)){
@@ -1103,7 +1180,7 @@ class Parser {
 		}
 		
 		if($token[0]==="character"){
-			if(!in_array("p", $this->open_elements)){
+			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
 			$this->appendText($token[1]);

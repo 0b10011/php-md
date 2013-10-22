@@ -1107,6 +1107,9 @@ class Parser {
 				// Ignore
 				return;
 			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
 			$this->openElement("a");
 			return;
 		}
@@ -1136,18 +1139,21 @@ class Parser {
 				// Ignore
 				return;
 			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
 			$this->appendElement("img");
 			$this->state = "inImage";
 			return;
 		}
 		
 		if($token[0]==="startEm"){
-			if(!$this->inBlock()){
-				$this->openElement("p");
-			}
 			if(in_array("em", $this->open_elements)){
 				// Ignore
 				return;
+			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
 			}
 			$this->openElement("em");
 			return;

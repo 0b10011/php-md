@@ -325,6 +325,11 @@ class Tokenizer {
 				$level += $matched = $this->consume(">");
 			} while($matched);
 			
+			if($this->next()==="\n"){
+				$this->state = "newBlock";
+				return;
+			}
+			
 			for($i=0;$i<$level;$i++){
 				$this->tokens[] = array("startBlockquote");
 			}

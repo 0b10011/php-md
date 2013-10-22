@@ -3549,7 +3549,7 @@ MDTEST;
 <li><p>asterisk 3</p></li>
 </ul>
 
-<hr />
+<hr>
 
 <p>Pluses tight:</p>
 
@@ -3567,7 +3567,7 @@ MDTEST;
 <li><p>Plus 3</p></li>
 </ul>
 
-<hr />
+<hr>
 
 <p>Minuses tight:</p>
 

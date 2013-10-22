@@ -455,7 +455,11 @@ class Tokenizer {
 			throw(new BadMethodCallException("In ul state, but no space after $ch could be consumed"));
 		}
 		
-		$this->tokens[] = array("ul", "$ch");
+		if(!$this->in_list&&$this->match("[^\\n]*(\\n *){2,}")){
+			$this->tokens[] = array("ulParagraph", $ch);
+		} else {
+			$this->tokens[] = array("ul", $ch);
+		}
 		$this->state = "afterSpace";
 		$this->in_list = true;
 	}
@@ -476,7 +480,11 @@ class Tokenizer {
 		// Consume all leading whitespace
 		$this->consume(" ");
 		
-		$this->tokens[] = array("ol", $number);
+		if(!$this->in_list&&$this->match("[^\\n]*(\\n *){2,}")){
+			$this->tokens[] = array("olParagraph", $number);
+		} else {
+			$this->tokens[] = array("ol", $number);
+		}
 		$this->state = "afterSpace";
 		$this->in_list = true;
 	}
@@ -820,6 +828,11 @@ class Parser {
 		"ol",
 		"li",
 	);
+	protected $indent_blocks = array(
+		"ul",
+		"ol",
+		"li",
+	);
 	protected $blocks = array(
 		"p",
 		"h1",
@@ -1060,25 +1073,41 @@ class Parser {
 			return;
 		}
 		
-		if($token[0]==="ul"){
+		if($token[0]==="ul"||$token[0]==="ulParagraph"){
 			if(!in_array("ul", $this->open_elements)){
-				$this->openElement("ul");
+				$last_element = $this->getLastElement();
+				if($last_element&&$last_element["name"]==="ul"){
+					$this->reopenLastElement();
+				} else {
+					$this->openElement("ul");
+				}
 			}
 			if(in_array("li", $this->open_elements)){
 				$this->closeElement("li");
 			}
 			$this->openElement("li");
+			if($token[0]==="ulParagraph"){
+				$this->openElement("p");
+			}
 			return;
 		}
 		
-		if($token[0]==="ol"){
+		if($token[0]==="ol"||$token[0]==="olParagraph"){
 			if(!in_array("ol", $this->open_elements)){
-				$this->openElement("ol");
+				$last_element = $this->getLastElement();
+				if($last_element&&$last_element["name"]==="ol"){
+					$this->reopenLastElement();
+				} else {
+					$this->openElement("ol");
+				}
 			}
 			if(in_array("li", $this->open_elements)){
 				$this->closeElement("li");
 			}
 			$this->openElement("li");
+			if($token[0]==="olParagraph"){
+				$this->openElement("p");
+			}
 			return;
 		}
 		

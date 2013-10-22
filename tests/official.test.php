@@ -3687,13 +3687,13 @@ ___This is strong and em.___
 So is ___this___ word.
 MDTEST;
 		$html = <<<'MDTEST'
-<p><strong><em>This is strong and em.</em></strong></p>
+<p><em><strong>This is strong and em.</strong></em></p>
 
-<p>So is <strong><em>this</em></strong> word.</p>
+<p>So is <em><strong>this</strong></em> word.</p>
 
-<p><strong><em>This is strong and em.</em></strong></p>
+<p><em><strong>This is strong and em.</strong></em></p>
 
-<p>So is <strong><em>this</em></strong> word.</p>
+<p>So is <em><strong>this</strong></em> word.</p>
 MDTEST;
 		$markdown = new Markdown($text);
 		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());

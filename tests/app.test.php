@@ -169,6 +169,18 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<ul><li><p>foo</p><p>bar</p></li></ul>', $markdown->toHTML());
 	}
 	
+	public function testListNested(){
+		$text = "* foo\n\t* bar\n\t* baz";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<ul><li>foo<ul><li>bar</li><li>baz</li></ul></li></ul>', $markdown->toHTML());
+	}
+	
+	public function testListNestedDeep(){
+		$text = "* foo\n\t* bar\n\t\t* baz";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<ul><li>foo<ul><li>bar<ul><li>baz</li></ul></li></ul></li></ul>', $markdown->toHTML());
+	}
+	
 	public function testListInvalid(){
 		$text = "foo\n* bar";
 		$markdown = new Markdown($text);

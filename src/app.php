@@ -234,14 +234,40 @@ class Tokenizer {
 		return $matches;
 	}
 	
+	protected function addToken($type, $value = null, $super_block = false){
+		if(!$super_block){
+			$this->rollback_tokens = false;
+		}
+		$this->line_tokens[] = array($type, $value);
+		$this->tokens[] = array($type, $value);
+	}
+	
+	protected $saved_tokens = array();
+	protected $line_tokens_last = array();
+	protected $line_tokens = array();
+	protected $rollback_tokens = true;
+	
 	/**
 	 * Tracks whether we're currently in a list
 	 * @var bool 
 	 */
 	protected $in_list = false;
 	
+	protected function startOfLine(){
+		if($this->rollback_tokens||$this->line_tokens===$this->line_tokens_last){
+			$this->tokens = $this->saved_tokens;
+		} else {
+			$this->saved_tokens = $this->tokens;
+			$this->rollback_tokens = true;
+		}
+		$this->line_tokens_last = $this->line_tokens;
+		$this->line_tokens = array();
+	}
+	
 	protected function newBlock(){
-		$this->tokens[] = array("newBlock");
+		$this->startOfLine();
+		
+		$this->addToken("newBlock");
 		$this->in_list = false;
 
 		// Ignore blank lines
@@ -254,12 +280,16 @@ class Tokenizer {
 	}
 	
 	protected function hardLine(){
-		$this->tokens[] = array("newLine");
+		$this->startOfLine();
+		
+		$this->addToken("newLine");
 		
 		return $this->startLine();
 	}
 	
 	protected function softLine(){
+		$this->startOfLine();
+		
 		return $this->startLine(false, false);
 	}
 	
@@ -274,7 +304,7 @@ class Tokenizer {
 		$spaces = $this->consume(" ");
 		$indentation = floor($spaces / 4);
 		for($i=0;$i<$indentation;$i++){
-			$this->tokens[] = array("indent");
+			$this->addToken("indent");
 		}
 		
 		$ch = $this->consume();
@@ -291,7 +321,7 @@ class Tokenizer {
 			
 			// If at least 3 $ch were consumed and followed by at least one new line, add "rule" token
 			if($consumed>=3&&$this->next()==="\n"){
-				$this->tokens[] = array("rule", $ch);
+				$this->addToken("rule", $ch);
 				$this->state = "newBlock";
 				$this->in_list = false;
 				return;
@@ -338,7 +368,7 @@ class Tokenizer {
 			}
 			
 			for($i=0;$i<$level;$i++){
-				$this->tokens[] = array("startBlockquote");
+				$this->addToken("startBlockquote");
 			}
 			
 			$this->state = "afterSpace";
@@ -350,7 +380,7 @@ class Tokenizer {
 		
 		// If a soft break and we've made it this far, add a space character
 		if(!$hard_break){
-			$this->tokens[] = array("character", " ");
+			$this->addToken("character", " ");
 		}
 	}
 	
@@ -358,13 +388,13 @@ class Tokenizer {
 		$ch = $this->consume();
 		
 		if($ch==="\n"){
-			$this->consume(" "); // Trim leading whitespace
-			if($this->consume("\n")){
-				$this->state = "newBlock";
-				return;
-			}
-			
+			// Consume newlines (ignoring whitespace on blank lines)
 			$this->state = "softLine";
+			while($this->match(" *\n")){
+				$this->consume(" ");
+				$this->consume("\n");
+				$this->state = "newBlock";
+			}
 			return;
 		}
 		
@@ -375,7 +405,7 @@ class Tokenizer {
 		
 		if($ch==="\\"){
 			$ch = $this->consume();
-			$this->tokens[] = array("character", $ch);
+			$this->addToken("character", $ch);
 			return;
 		}
 		
@@ -398,7 +428,7 @@ class Tokenizer {
 		}
 		
 		if($ch===" "){
-			$this->tokens[] = array("character", $ch);
+			$this->addToken("character", $ch);
 			$this->state = "afterSpace";
 			return;
 		}
@@ -411,18 +441,18 @@ class Tokenizer {
 				$consumed = 2;
 			}
 			if($consumed===2){
-				$this->tokens[] = array($type."Em", $ch);
-				$this->tokens[] = array($type."Strong", $ch.$ch);
+				$this->addToken($type."Em", $ch);
+				$this->addToken($type."Strong", $ch.$ch);
 				return;
 			} elseif($consumed===1){
-				$this->tokens[] = array($type."Strong", $ch.$ch);
+				$this->addToken($type."Strong", $ch.$ch);
 				return;
 			}
-			$this->tokens[] = array($type."Em", $ch);
+			$this->addToken($type."Em", $ch);
 			return;
 		}
 		
-		$this->tokens[] = array("character", $ch);
+		$this->addToken("character", $ch);
 	}
 	
 	protected function afterSpace(){
@@ -436,14 +466,14 @@ class Tokenizer {
 				$consumed = 2;
 			}
 			if($consumed===2){
-				$this->tokens[] = array("startEm", $ch);
-				$this->tokens[] = array("startStrong", $ch.$ch);
+				$this->addToken("startEm", $ch);
+				$this->addToken("startStrong", $ch.$ch);
 				return;
 			} elseif($consumed===1){
-				$this->tokens[] = array("startStrong", $ch.$ch);
+				$this->addToken("startStrong", $ch.$ch);
 				return;
 			}
-			$this->tokens[] = array("startEm", $ch);
+			$this->addToken("startEm", $ch);
 			return;
 		}
 		
@@ -463,9 +493,9 @@ class Tokenizer {
 		}
 		
 		if(!$this->in_list&&$this->match("[^\\n]*(\\n *){2,}")){
-			$this->tokens[] = array("ulParagraph", $ch);
+			$this->addToken("ulParagraph", $ch);
 		} else {
-			$this->tokens[] = array("ul", $ch);
+			$this->addToken("ul", $ch);
 		}
 		$this->state = "afterSpace";
 		$this->in_list = true;
@@ -488,9 +518,9 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		if(!$this->in_list&&$this->match("[^\\n]*(\\n *){2,}")){
-			$this->tokens[] = array("olParagraph", $number);
+			$this->addToken("olParagraph", $number);
 		} else {
-			$this->tokens[] = array("ol", $number);
+			$this->addToken("ol", $number);
 		}
 		$this->state = "afterSpace";
 		$this->in_list = true;
@@ -511,7 +541,7 @@ class Tokenizer {
 		// Get rid of leading whitespace
 		$this->consume(" ");
 		
-		$this->tokens[] = array("atxHeader", "$consumed");
+		$this->addToken("atxHeader", "$consumed");
 		$this->state = "afterSpace";
 	}
 	
@@ -525,7 +555,7 @@ class Tokenizer {
 		
 		$this->code_backticks = $consumed;
 		$this->state = "inCode";
-		$this->tokens[] = array("startCode");
+		$this->addToken("startCode");
 	}
 	
 	protected function inCode(){
@@ -537,14 +567,14 @@ class Tokenizer {
 		}
 		
 		if($consumed===$this->code_backticks){
-			$this->tokens[] = array("closeCode");
+			$this->addToken("closeCode");
 			return;
 		}
 		
 		if($consumed) $this->backup($consumed);
 		$ch = $this->consume();
 		
-		$this->tokens[] = array("character", $ch);
+		$this->addToken("character", $ch);
 	}
 	
 	protected function startLink(){
@@ -555,7 +585,7 @@ class Tokenizer {
 		}
 		
 		$this->state = "linkText";
-		$this->tokens[] = array("startLink");
+		$this->addToken("startLink");
 	}
 	
 	protected function linkText(){
@@ -563,7 +593,7 @@ class Tokenizer {
 		
 		if($ch==="\\"){
 			$ch = $this->consume();
-			$this->tokens[] = array("character", $ch);
+			$this->addToken("character", $ch);
 			return;
 		}
 		
@@ -582,7 +612,7 @@ class Tokenizer {
 			return;
 		}
 		
-		$this->tokens[] = array("character", $ch);
+		$this->addToken("character", $ch);
 	}
 	
 	protected function linkUrl($url = ''){
@@ -596,7 +626,7 @@ class Tokenizer {
 		if($this->match(" *\"")){
 			$this->consume(" ");
 			$this->consume(); // Consume "
-			$this->tokens[] = array("linkUrl", $url.$ch);
+			$this->addToken("linkUrl", $url.$ch);
 			$this->state = "linkTitle";
 			return;
 		}
@@ -608,9 +638,9 @@ class Tokenizer {
 		if($this->match(" *\)")){
 			$this->consume(" ");
 			$this->consume(); // Consume )
-			$this->tokens[] = array("linkUrl", $url.$ch);
+			$this->addToken("linkUrl", $url.$ch);
 			$this->state = "inLine";
-			$this->tokens[] = array("endLink");
+			$this->addToken("endLink");
 			return;
 		}
 		
@@ -629,9 +659,9 @@ class Tokenizer {
 			if($this->consume()!==")"){
 				throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
 			}
-			$this->tokens[] = array("linkTitle", $title);
+			$this->addToken("linkTitle", $title);
 			$this->state = "inLine";
-			$this->tokens[] = array("endLink");
+			$this->addToken("endLink");
 			return;
 		}
 		
@@ -647,7 +677,7 @@ class Tokenizer {
 		
 		$this->consume(); // Consume [
 		$this->state = "imageAlt";
-		$this->tokens[] = array("startImage");
+		$this->addToken("startImage");
 	}
 	
 	protected function imageAlt($alt = ''){
@@ -669,7 +699,7 @@ class Tokenizer {
 			
 			// Consume (
 			$this->consume();
-			if($alt!=='') $this->tokens[] = array("imageAlt", $alt);
+			if($alt!=='') $this->addToken("imageAlt", $alt);
 			$this->state = "imageUrl";
 			return;
 		}
@@ -688,7 +718,7 @@ class Tokenizer {
 		if($this->match(" *\"")){
 			$this->consume(" ");
 			$this->consume(); // Consume "
-			$this->tokens[] = array("imageUrl", $url.$ch);
+			$this->addToken("imageUrl", $url.$ch);
 			$this->state = "imageTitle";
 			return;
 		}
@@ -696,9 +726,9 @@ class Tokenizer {
 		if($this->match(" *\)")){
 			$this->consume(" ");
 			$this->consume(); // Consume )
-			$this->tokens[] = array("imageUrl", $url.$ch);
+			$this->addToken("imageUrl", $url.$ch);
 			$this->state = "inLine";
-			$this->tokens[] = array("endImage");
+			$this->addToken("endImage");
 			return;
 		}
 		
@@ -717,9 +747,9 @@ class Tokenizer {
 			if($this->consume()!==")"){
 				throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
 			}
-			$this->tokens[] = array("imageTitle", $title);
+			$this->addToken("imageTitle", $title);
 			$this->state = "inLine";
-			$this->tokens[] = array("endImage");
+			$this->addToken("endImage");
 			return;
 		}
 		
@@ -1025,6 +1055,16 @@ class Parser {
 	}
 	
 	protected function appendText($text){
+		// Append to previous text node, if it exists
+		if($this->current["children"]){
+			$child =& $this->current["children"][count($this->current["children"])-1];
+			if($child["name"]==="#TEXT"){
+				$child["value"] .= $text;
+				return;
+			}
+		}
+		
+		// No text node found, add a new one
 		$parent =& $this->current;
 		$this->current["children"][] = array(
 			"parent" => &$parent,
@@ -1041,6 +1081,8 @@ class Parser {
 			$token[1] = null;
 		}
 		
+		$increase_list_level = false;
+		
 		if($token[0]==="indent"){
 			$last_element = $this->getLastElement();
 			if(array_key_exists($last_element["name"], $this->indent_blocks)){
@@ -1049,6 +1091,15 @@ class Parser {
 				return;
 			}
 			unset($last_element);
+			$next_token = $this->next();
+			if($token[0]==="indent"&&($next_token[0]==="ul"||$next_token[0]==="ulParagraph")){
+				$increase_list_level = true;
+				$token = $this->consume();
+			} else {
+				// Ignore (placeholder for code block)
+				return;
+			}
+			unset($next_token);
 		}
 		
 		// If next state is set (from indent), then switch to that
@@ -1111,7 +1162,23 @@ class Parser {
 					$this->openElement("ul");
 				}
 			}
-			if(in_array("li", $this->open_elements)){
+			if($increase_list_level){
+				if($this->current["name"]!=="li"){
+					$last_element = $this->getLastElement();
+					if($last_element&&$last_element["name"]==="li"){
+						$this->reopenLastElement();
+					} elseif($this->inBlock()){
+						do {
+							$this->closeBlock();
+						} while($this->current["name"]!=="li"&&$this->inBlock());
+					}
+					if($this->current["name"]!=="li"){
+						$this->openElement("ul");
+						$this->openElement("li");
+					}
+				}
+				$this->openElement("ul");
+			} elseif(in_array("li", $this->open_elements)){
 				$this->closeElement("li");
 			}
 			$this->openElement("li");

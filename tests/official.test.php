@@ -3624,8 +3624,7 @@ MDTEST;
 <ol>
 <li><p>Item 1, graf one.</p>
 
-<p>Item 2. graf two. The quick brown fox jumped over the lazy dog's
-back.</p></li>
+<p>Item 2. graf two. The quick brown fox jumped over the lazy dog's back.</p></li>
 <li><p>Item 2.</p></li>
 <li><p>Item 3.</p></li>
 </ol>

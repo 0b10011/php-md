@@ -244,11 +244,11 @@ class Tokenizer {
 		$this->tokens[] = array("newBlock");
 		$this->in_list = false;
 
-		// Ignore extra leading whitespace
-		do {
-			$consumed = $this->consume("\n");
-			$consumed += $this->consume(" ");
-		} while($consumed);
+		// Ignore blank lines
+		while($this->match(" *\n")){
+			$this->consume(" ");
+			$this->consume("\n");
+		}
 		
 		return $this->startLine(true);
 	}
@@ -264,11 +264,18 @@ class Tokenizer {
 	}
 	
 	protected function startLine($new_block = false, $hard_break = true){
-		// Ignore extra leading whitespace
-		do {
-			$consumed = $this->consume("\n");
-			$consumed += $this->consume(" ");
-		} while($consumed);
+		// Ignore blank lines
+		while($this->match(" *\n")){
+			$this->consume(" ");
+			$this->consume("\n");
+		}
+		
+		// Add indent token for every 4 spaces (1 tab = 4 spaces)
+		$spaces = $this->consume(" ");
+		$indentation = floor($spaces / 4);
+		for($i=0;$i<$indentation;$i++){
+			$this->tokens[] = array("indent");
+		}
 		
 		$ch = $this->consume();
 		
@@ -729,6 +736,8 @@ class Parser {
 	protected $state = "data";
 	protected $states = array(
 		"data" => "data",
+		"olContinue" => "olContinue",
+		"ulContinue" => "ulContinue",
 		"afterSpace" => "afterSpace",
 		"afterNewline" => "afterNewline",
 		"inImage" => "inImage",
@@ -829,9 +838,8 @@ class Parser {
 		"li",
 	);
 	protected $indent_blocks = array(
-		"ul",
-		"ol",
-		"li",
+		"ul" => "ulContinue",
+		"ol" => "olContinue",
 	);
 	protected $blocks = array(
 		"p",
@@ -898,6 +906,8 @@ class Parser {
 	
 	protected function reopenLastElement(){
 		$last_element =& $this->current["children"][count($this->current["children"])-1];
+		
+		if(!array_key_exists("empty", $last_element))throw(new LogicException($last_element["name"]));
 		
 		if($last_element["empty"]){
 			throw(new LogicException("Cannot reopen empty element"));
@@ -1024,10 +1034,29 @@ class Parser {
 		);
 	}
 	
+	protected $next_state = null;
 	protected function data(){
 		$token = $this->consume();
 		if(!array_key_exists(1, $token)){
 			$token[1] = null;
+		}
+		
+		if($token[0]==="indent"){
+			$last_element = $this->getLastElement();
+			if(array_key_exists($last_element["name"], $this->indent_blocks)){
+				$this->reopenLastElement();
+				$this->state = $this->indent_blocks[$this->current["name"]];
+				return;
+			}
+			unset($last_element);
+		}
+		
+		// If next state is set (from indent), then switch to that
+		if($this->next_state){
+			$this->state = $this->next_state;
+			$this->next_state = null;
+			$this->backup();
+			return;
 		}
 		
 		if($token[0]==="newBlock"){
@@ -1273,6 +1302,26 @@ class Parser {
 		}
 		
 		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function olContinue(){
+		// Open <li> again
+		$this->reopenLastElement();
+		
+		// Open a new <p>
+		$this->openElement("p");
+		
+		$this->state = "data";
+	}
+	
+	protected function ulContinue(){
+		// Open <li> again
+		$this->reopenLastElement();
+		
+		// Open a new <p>
+		$this->openElement("p");
+		
+		$this->state = "data";
 	}
 	
 	protected function newLine(){

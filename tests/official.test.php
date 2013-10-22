@@ -390,7 +390,7 @@ list item.</p>
 * criminey.</p>
 MDTEST;
 		$markdown = new Markdown($text);
-		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
+		$this->assertEquals(str_replace("\n", ' ', str_replace("\n\n<", '<', $html)), $markdown->toHTML());
 	}
 	
 	/**
@@ -3399,7 +3399,7 @@ MDTEST;
 </blockquote>
 MDTEST;
 		$markdown = new Markdown($text);
-		$this->assertEquals(str_replace("\n", '', $html), $markdown->toHTML());
+		$this->assertEquals(preg_replace("/\n */", '', $html), $markdown->toHTML());
 	}
 	
 	/**

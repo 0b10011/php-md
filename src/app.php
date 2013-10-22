@@ -329,12 +329,12 @@ class Tokenizer {
 				$this->tokens[] = array("startBlockquote");
 			}
 			
-			$this->state = "inLine";
+			$this->state = "afterSpace";
 			return;
 		}
 		
 		$this->backup();
-		$this->state = "inLine";
+		$this->state = "afterSpace";
 		
 		// If a soft break and we've made it this far, add a space character
 		if(!$hard_break){
@@ -393,19 +393,20 @@ class Tokenizer {
 		
 		if($ch==="*"||$ch==="_"){
 			$consumed = $this->consume($ch);
+			$type = $this->next() === " " ? "end" : "toggle";
 			if($consumed>2){
 				$this->position = $this->position - ($consumed - 2);
 				$consumed = 2;
 			}
 			if($consumed===2){
-				$this->tokens[] = array("toggleEm");
-				$this->tokens[] = array("toggleStrong");
+				$this->tokens[] = array($type."Em", $ch);
+				$this->tokens[] = array($type."Strong", $ch.$ch);
 				return;
 			} elseif($consumed===1){
-				$this->tokens[] = array("toggleStrong");
+				$this->tokens[] = array($type."Strong", $ch.$ch);
 				return;
 			}
-			$this->tokens[] = array("toggleEm", $ch);
+			$this->tokens[] = array($type."Em", $ch);
 			return;
 		}
 		
@@ -416,18 +417,18 @@ class Tokenizer {
 		$ch = $this->consume();
 		$this->state = "inLine";
 		
-		if($ch==="*"||$ch==="_"){
+		if(($ch==="*"||$ch==="_")&&!$this->match("[ \n]")){
 			$consumed = $this->consume($ch);
 			if($consumed>2){
 				$this->position = $this->position - ($consumed - 2);
 				$consumed = 2;
 			}
 			if($consumed===2){
-				$this->tokens[] = array("startEm");
-				$this->tokens[] = array("startStrong");
+				$this->tokens[] = array("startEm", $ch);
+				$this->tokens[] = array("startStrong", $ch.$ch);
 				return;
 			} elseif($consumed===1){
-				$this->tokens[] = array("startStrong");
+				$this->tokens[] = array("startStrong", $ch.$ch);
 				return;
 			}
 			$this->tokens[] = array("startEm", $ch);
@@ -450,7 +451,7 @@ class Tokenizer {
 		}
 		
 		$this->tokens[] = array("ul", "$ch");
-		$this->state = "inLine";
+		$this->state = "afterSpace";
 		$this->in_list = true;
 	}
 	
@@ -471,7 +472,7 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		$this->tokens[] = array("ol", $number);
-		$this->state = "inLine";
+		$this->state = "afterSpace";
 		$this->in_list = true;
 	}
 	
@@ -491,7 +492,7 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		$this->tokens[] = array("atxHeader", "$consumed");
-		$this->state = "inLine";
+		$this->state = "afterSpace";
 	}
 	
 	protected $code_backticks = null;
@@ -1148,14 +1149,26 @@ class Parser {
 		}
 		
 		if($token[0]==="startEm"){
-			if(in_array("em", $this->open_elements)){
-				// Ignore
-				return;
-			}
 			if(!$this->inBlock()){
 				$this->openElement("p");
 			}
+			if(in_array("em", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
 			$this->openElement("em");
+			return;
+		}
+		
+		if($token[0]==="endEm"){
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
+			if(!in_array("em", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->closeElement("em");
 			return;
 		}
 		
@@ -1176,10 +1189,22 @@ class Parser {
 				$this->openElement("p");
 			}
 			if(in_array("strong", $this->open_elements)){
-				// Ignore
+				$this->appendText($token[1]);
 				return;
 			}
 			$this->openElement("strong");
+			return;
+		}
+		
+		if($token[0]==="endStrong"){
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
+			if(!in_array("strong", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->closeElement("strong");
 			return;
 		}
 		

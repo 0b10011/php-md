@@ -250,14 +250,13 @@ class Tokenizer {
 			$consumed += $this->consume(" ");
 		} while($consumed);
 		
-		$this->state = "hardLine";
-		return $this->hardLine(true);
+		return $this->startLine(true);
 	}
 	
-	protected function hardLine($new_block = false){
+	protected function hardLine(){
 		$this->tokens[] = array("newLine");
 		
-		return $this->startLine($new_block);
+		return $this->startLine();
 	}
 	
 	protected function softLine(){
@@ -330,7 +329,7 @@ class Tokenizer {
 				$this->tokens[] = array("startBlockquote");
 			}
 			
-			$this->state = "newBlock";
+			$this->state = "inLine";
 			return;
 		}
 		
@@ -869,6 +868,27 @@ class Parser {
 		$this->open_elements[] = $elt;
 	}
 	
+	protected function &getLastElement(){
+		if(!count($this->current["children"])){
+			$null = null;
+			return $null;
+		}
+		
+		return $this->current["children"][count($this->current["children"])-1];
+	}
+	
+	protected function reopenLastElement(){
+		$last_element =& $this->current["children"][count($this->current["children"])-1];
+		
+		if($last_element["empty"]){
+			throw(new LogicException("Cannot reopen empty element"));
+		}
+		
+		$this->current =& $last_element;
+		
+		$this->open_elements[] = $this->current["name"];
+	}
+	
 	protected function closeElement($elt){
 		if(!in_array($elt, $this->open_elements)){
 			return false;
@@ -969,6 +989,12 @@ class Parser {
 		}
 	}
 	
+	protected function closeBlocks(){
+		while($this->current["name"]!=="#ROOT"){
+			$this->closeElement($this->current["name"]);
+		}
+	}
+	
 	protected function appendText($text){
 		$parent =& $this->current;
 		$this->current["children"][] = array(
@@ -986,49 +1012,24 @@ class Parser {
 		}
 		
 		if($token[0]==="newBlock"){
-			if(in_array("p", $this->open_elements)){
-				$this->closeElement("p");
-			}
+			// Close all elements (may reenter them later)
+			$this->closeBlocks();
 			return;
 		}
 		
 		if($token[0]==="newLine"){
-			if(in_array("p", $this->open_elements)){
-				$this->appendElement("br");
-			}
+			$this->appendElement("br");
 			return;
 		}
 		
 		if($token[0]==="startBlockquote"){
-			
-			// Get what level we should go to
-			$level = 1;
-			while(($next = $this->next())&&$next[0]==="startBlockquote"){
-				$this->consume();
-				$level++;
+			$last_element = $this->getLastElement();
+			if($last_element&&$last_element["name"]==="blockquote"){
+				$this->reopenLastElement();
+				return;
 			}
 			
-			// Get the current level
-			$current_level = 0;
-			foreach($this->open_elements as $open_element){
-				if($open_element==="blockquote"){
-					$current_level++;
-				}
-			}
-			
-			// Figure out the difference
-			if($current_level<$level){
-				$difference = $level - $current_level;
-				for($i=0;$i<$difference;$i++){
-					$this->openElement("blockquote");
-				}
-			} else {
-				$difference = $current_level - $level;
-				for($i=0;$i<$difference;$i++){
-					$this->closeElement("blockquote");
-				}
-			}
-			
+			$this->openElement("blockquote");
 			return;
 		}
 		

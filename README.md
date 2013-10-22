@@ -40,4 +40,11 @@ echo $html; // <p>Some string using <em>markdown</em>.</p>
 
 - Empty elements are output without trailing slash (ie, `<br>` instead of `<br />`)
 
+- Currently no support for:
+    - html `<div>`
+    - entities `&quot;`
+    - autolinks `<http://example.com/>`
+    - code blocks `    <?php`
+    - reference links `[foo][]`
+
 [Inter-element whitespace]: http://www.whatwg.org/specs/web-apps/current-work/multipage/elements.html#inter-element-whitespace

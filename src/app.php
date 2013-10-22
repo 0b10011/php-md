@@ -109,7 +109,8 @@ class Tokenizer {
 	protected $state = "newBlock";
 	protected $states = array(
 		"newBlock" => "newBlock",
-		"newLine" => "newLine",
+		"hardLine" => "hardLine",
+		"softLine" => "softLine",
 		"inLine" => "inLine",
 		"afterSpace" => "afterSpace",
 		"startCode" => "startCode",
@@ -251,13 +252,21 @@ class Tokenizer {
 		}
 		
 		$this->backup();
-		$this->state = "newLine";
-		return $this->newLine(true);
+		$this->state = "hardLine";
+		return $this->hardLine(true);
 	}
 	
-	protected function newLine($new_block = false){
+	protected function hardLine($new_block = false){
 		$this->tokens[] = array("newLine");
 		
+		return $this->startLine($new_block);
+	}
+	
+	protected function softLine(){
+		return $this->startLine(false, false);
+	}
+	
+	protected function startLine($new_block = false, $hard_break = true){
 		// Ignore extra leading whitespace
 		do {
 			$consumed = $this->consume("\n");
@@ -276,8 +285,8 @@ class Tokenizer {
 				$consumed += $found = $this->consume($ch);
 			} while($found);
 			
-			// If at least 3 $ch were consumed and followed by two new lines, add "rule" token
-			if($consumed>=3&&$this->next()==="\n"&&$this->next(2)==="\n"){
+			// If at least 3 $ch were consumed and followed by at least one new line, add "rule" token
+			if($consumed>=3&&$this->next()==="\n"){
 				$this->tokens[] = array("rule", $ch);
 				$this->state = "newBlock";
 				return;
@@ -318,23 +327,29 @@ class Tokenizer {
 		
 		$this->backup();
 		$this->state = "inLine";
+		
+		// If a soft break and we've made it this far, add a space character
+		if(!$hard_break){
+			$this->tokens[] = array("character", " ");
+		}
 	}
 	
 	protected function inLine(){
 		$ch = $this->consume();
 		
 		if($ch==="\n"){
+			$this->consume(" "); // Trim leading whitespace
 			if($this->consume("\n")){
 				$this->state = "newBlock";
 				return;
 			}
 			
-			$this->tokens[] = array("character", " ");
+			$this->state = "softLine";
 			return;
 		}
 		
 		if($ch===" "&&$this->consume(" ")&&$this->consume("\n")){
-			$this->state = "newLine";
+			$this->state = "hardLine";
 			return;
 		}
 		
@@ -363,11 +378,6 @@ class Tokenizer {
 		}
 		
 		if($ch===" "){
-			if($this->consume(" ")&&$this->next()==="\n"){
-				$this->backup(2);
-				$this->state = "newLine";
-				return;
-			}
 			$this->tokens[] = array("character", $ch);
 			$this->state = "afterSpace";
 			return;

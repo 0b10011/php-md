@@ -31,16 +31,22 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
 	}
 	
-	public function testHorizontalRulesInvalid(){
+	public function testHorizontalRules_1_2(){
 		$text = "foo\n---\n\nbar";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo ---</p><p>bar</p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
 	}
 	
-	public function testHorizontalRulesInvalid2(){
+	public function testHorizontalRules_2_1(){
 		$text = "foo\n\n---\nbar";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo</p><p>--- bar</p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesInvalid(){
+		$text = "foo\n\n-*-\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><p>-<em>-</em></p><p>bar</p>', $markdown->toHTML());
 	}
 	
 	public function testHorizontalRulesAsterisk(){
@@ -55,19 +61,16 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
 	}
 	
-	/**
-	 * Converted to <strong><em>, then discarded when empty
-	 */
-	public function testHorizontalRulesAsteriskInvalid(){
-		$text = "foo\n***\n\nbar";
-		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo </p><p>bar</p>', $markdown->toHTML());
-	}
-	
-	public function testHorizontalRulesAsteriskInvalid2(){
+	public function testHorizontalRulesAsterisk_2_1(){
 		$text = "foo\n\n***\nbar";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo</p><p><em><strong> bar</strong></em></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
+	}
+	
+	public function testHorizontalRulesAsterisk_1_2(){
+		$text = "foo\n***\n\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
 	}
 	
 	public function testAtxHeaders1(){

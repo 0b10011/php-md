@@ -234,8 +234,15 @@ class Tokenizer {
 		return $matches;
 	}
 	
+	/**
+	 * Tracks whether we're currently in a list
+	 * @var bool 
+	 */
+	protected $in_list = false;
+	
 	protected function newBlock(){
 		$this->tokens[] = array("newBlock");
+		$this->in_list = false;
 
 		// Ignore extra leading whitespace
 		do {
@@ -243,15 +250,6 @@ class Tokenizer {
 			$consumed += $this->consume(" ");
 		} while($consumed);
 		
-		$ch = $this->consume();
-
-		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
-			$this->backup();
-			$this->state = "ol";
-			return;
-		}
-		
-		$this->backup();
 		$this->state = "hardLine";
 		return $this->hardLine(true);
 	}
@@ -289,6 +287,7 @@ class Tokenizer {
 			if($consumed>=3&&$this->next()==="\n"){
 				$this->tokens[] = array("rule", $ch);
 				$this->state = "newBlock";
+				$this->in_list = false;
 				return;
 			}
 			
@@ -298,10 +297,20 @@ class Tokenizer {
 			unset($consumed, $skipped, $found);
 		}
 		
-		if($new_block&&($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
-			$this->backup();
-			$this->state = "ul";
-			return;
+		if(($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
+			if($new_block||$this->in_list){
+				$this->backup();
+				$this->state = "ul";
+				return;
+			}
+		}
+
+		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
+			if($new_block||$this->in_list){
+				$this->backup();
+				$this->state = "ol";
+				return;
+			}
 		}
 		
 		if($ch==="#"){
@@ -443,6 +452,7 @@ class Tokenizer {
 		
 		$this->tokens[] = array("ul", "$ch");
 		$this->state = "inLine";
+		$this->in_list = true;
 	}
 	
 	protected function ol(){
@@ -453,15 +463,17 @@ class Tokenizer {
 		}
 		
 		// Consume all digits and period
+		$number = $ch;
 		do {
-			$ch = $this->consume();
+			$number .= $ch = $this->consume();
 		} while(preg_match("/\d/", $ch));
 		
 		// Consume all leading whitespace
 		$this->consume(" ");
 		
-		$this->tokens[] = array("ol");
-		$this->state = "newBlock";
+		$this->tokens[] = array("ol", $number);
+		$this->state = "inLine";
+		$this->in_list = true;
 	}
 	
 	protected function atxHeader(){

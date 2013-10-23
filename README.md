@@ -49,4 +49,9 @@ echo $html; // <p>Some string using <em>markdown</em>.</p>
     - code blocks `    <?php`
     - reference links `[foo][]`
 
+- Output is valid HTML. Example that gets messed up in Dingus:
+
+        - foo
+        > bar
+
 [Inter-element whitespace]: http://www.whatwg.org/specs/web-apps/current-work/multipage/elements.html#inter-element-whitespace

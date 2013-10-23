@@ -17,6 +17,17 @@
 			<group>autolinks</group>
 			<group>codeblock</group>
 			<group>referencelinks</group>
+			<group>official</group>
+			<group>em</group>
+			<group>strong</group>
+			<group>rule</group>
+			<group>link</group>
+			<group>inlineCode</group>
+			<group>atxHeader</group>
+			<group>blockquote</group>
+			<group>ol</group>
+			<group>ul</group>
+			<group>image</group>
 		</exclude>
 	</groups>
 	

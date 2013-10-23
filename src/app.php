@@ -106,8 +106,14 @@ class Tokenizer {
 	protected $position = 0;
 	protected $last_consumed = false;
 	protected $loop_detect = array();
-	protected $state = "newBlock";
+	protected $state = "start";
 	protected $states = array(
+		"start" => "start",
+		"textStart" => "textStart",
+		"text" => "text",
+		"indentedCode" => "indentedCode",
+		
+		
 		"newBlock" => "newBlock",
 		"hardLine" => "hardLine",
 		"softLine" => "softLine",
@@ -274,6 +280,133 @@ class Tokenizer {
 		$this->line_tokens_last = $this->line_tokens;
 		$this->line_tokens = array();
 		return $reset;
+	}
+	
+	protected function start(){
+		// Ignore leading newlines
+		while($this->match(" *\n")){
+			$this->consume(" ");
+			$this->consume("\n");
+		}
+		
+		// Add two newline tokens (to get parser started in general block)
+		$this->addToken("newline");
+		$this->addToken("newline");
+		
+		// Switch to text state
+		$this->state = "textStart";
+	}
+	
+	/**
+	 * Blank state (eg, start or two newlines after a normal paragraph)
+	 */
+	protected function textStart(){
+		
+		// Check if indented code
+		if($this->match("    ")){
+			$this->state = "indentedCode";
+			return;
+		}
+		
+		$this->consume(" ");
+		
+		$this->state = "text";
+	}
+	
+	protected function text(){
+		
+		// Consume a character
+		$ch = $this->consume();
+		
+		if($ch==="\\"){
+			$ch = $this->consume();
+			$this->addToken("character", $ch);
+			return;
+		}
+		
+		if($ch==="\n"){
+			$consumed = false;
+			while($this->match(" *\n")){
+				$this->consume(" ");
+				$this->consume("\n");
+				$consumed = true;
+			}
+			if($consumed){
+				$this->state = "textStart";
+				$this->addToken("newline");
+				$this->addToken("newline");
+				return;
+			}
+			
+			$this->consume(" ");
+			$this->addToken("newline");
+			return;
+		}
+		
+		if($ch===" "){
+			
+			if($this->consume(" ")&&$this->next()==="\n"){
+				
+				// Consume \n
+				$this->consume();
+				
+				$consumed = false;
+				while($this->match(" *\n")){
+					$this->consume(" ");
+					$this->consume("\n");
+					$consumed = true;
+				}
+				
+				if($consumed){
+					$this->state = "textStart";
+					$this->addToken("newline");
+					$this->addToken("newline");
+					return;
+				}
+				
+				$this->addToken("linebreak");
+				$this->addToken("newline");
+				
+				// Ignore leading whitespace
+				$this->consume(" ");
+				
+				return;
+			}
+			
+			if($this->next()==="\n"){
+				return;
+			}
+			
+			$this->addToken("character", $ch);
+			return;
+		}
+		
+		// Plain text, append as text
+		$this->addToken("character", $ch);
+	}
+	
+	protected function indentedCode(){
+		// Consume all blank lines
+		$newline = false;
+		while($this->match(" *\n")){
+			$this->consume(" ");
+			$this->consume("\n");
+			$newline = true;
+		}
+		
+		// If a new, non-blank line and not indented, start a new block
+		if($newline&&!$this->match("    ")){
+			$this->addToken("newline");
+			$this->addToken("newline");
+			$this->state = "text";
+			return;
+		}
+		
+		// Consume a character
+		$ch = $this->consume();
+		
+		// Plain text, append as text
+		$this->addToken("character", $ch);
 	}
 	
 	protected function newBlock(){
@@ -781,8 +914,14 @@ class Parser {
 	protected $current = null;
 	protected $position = 0;
 	protected $loop_detect = array();
-	protected $state = "data";
+	protected $state = "start";
 	protected $states = array(
+		"start" => "start",
+		"block" => "block",
+		"paragraph" => "paragraph",
+		"inParagraph" => "inParagraph",
+		
+		
 		"data" => "data",
 		"olContinue" => "olContinue",
 		"ulContinue" => "ulContinue",
@@ -1090,6 +1229,80 @@ class Parser {
 			"type" => "text",
 			"value" => $text,
 		);
+	}
+	
+	protected function start(){
+		$token = $this->consume();
+		$next = $this->next();
+		if(!array_key_exists(1, $token)){
+			$token[1] = null;
+		}
+		
+		if($token[0]==="newline"&&$next[0]==="newline"){
+			do {
+				$this->consume();
+				$next = $this->next();
+			} while($next[0]==="newline");
+			
+			$this->state = "block";
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function block(){
+		$this->closeBlocks();
+		
+		$token = $this->consume();
+		if(!array_key_exists(1, $token)){
+			$token[1] = null;
+		}
+		
+		if($token[0]==="character"){
+			$this->state = "paragraph";
+			$this->backup();
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function paragraph(){
+		$this->openElement("p");
+		$this->state = "inParagraph";
+	}
+	
+	protected function inParagraph(){
+		$token = $this->consume();
+		if(!array_key_exists(1, $token)){
+			$token[1] = null;
+		}
+		
+		if($token[0]==="character"){
+			$this->appendText($token[1]);
+			return;
+		}
+		
+		if($token[0]==="newline"){
+			$next = $this->next();
+			if($next[0]==="newline"){
+				$this->consume();
+				$this->state = "block";
+				return;
+			}
+			
+			$this->appendText(" ");
+			return;
+		}
+		
+		if($token[0]==="linebreak"){
+			$this->appendElement("br");
+			$this->consume(); // Consume newline
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
 	}
 	
 	protected $next_state = null;

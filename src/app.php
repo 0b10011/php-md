@@ -236,7 +236,7 @@ class Tokenizer {
 	
 	protected function addToken($type, $value = null, $super_block = false){
 		if(!$super_block){
-			$this->rollback_tokens = false;
+			$this->only_super_blocks = false;
 		}
 		$this->line_tokens[] = array($type, $value);
 		$this->tokens[] = array($type, $value);
@@ -245,7 +245,7 @@ class Tokenizer {
 	protected $saved_tokens = array();
 	protected $line_tokens_last = array();
 	protected $line_tokens = array();
-	protected $rollback_tokens = true;
+	protected $only_super_blocks = true;
 	
 	/**
 	 * Tracks whether we're currently in a list
@@ -253,12 +253,21 @@ class Tokenizer {
 	 */
 	protected $in_list = false;
 	
+	protected function sameLinePrefix($current, $previous){
+		foreach($current as $key => $this_current){
+			if($this_current!==$previous[$key]){
+				return false;
+			}
+		}
+		return true;
+	}
+	
 	protected function startOfLine(){
-		if($this->rollback_tokens||$this->line_tokens===$this->line_tokens_last){
+		if($this->only_super_blocks&&$this->sameLinePrefix($this->line_tokens, $this->line_tokens_last)){
 			$this->tokens = $this->saved_tokens;
 		} else {
 			$this->saved_tokens = $this->tokens;
-			$this->rollback_tokens = true;
+			$this->only_super_blocks = true;
 		}
 		$this->line_tokens_last = $this->line_tokens;
 		$this->line_tokens = array();

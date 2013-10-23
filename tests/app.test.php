@@ -172,13 +172,33 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	/**
+	 * Dingus ignores any number of trailing spaces followed by any number of trailing #
+	 * @group atxHeader
+	 */
+	public function testAtxHeadersFunky(){
+		$text = "# foo    ###\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<h1>foo</h1><p>bar</p>', $markdown->toHTML());
+	}
+	
+	/**
+	 * Dingus starts a new block when a single newline is encountered in a block
+	 * @group atxHeader
+	 */
+	public function testAtxHeadersSingleNewline(){
+		$text = "# foo\nbar";
+		$markdown = new Markdown($text);
+		$this->assertEquals('<h1>foo</h1><p>bar</p>', $markdown->toHTML());
+	}
+	
+	/**
 	 * @group atxHeader
 	 * @group em
 	 */
 	public function testAtxHeadersEm(){
-		$text = "# foo *bar  \nhello\n\nworld";
+		$text = "# foo *bar\n\nhello";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<h1>foo <em>bar<br>hello</em></h1><p>world</p>', $markdown->toHTML());
+		$this->assertEquals('<h1>foo <em>bar</em></h1><p>hello</p>', $markdown->toHTML());
 	}
 	
 	/**
@@ -186,9 +206,9 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	 * @group strong
 	 */
 	public function testAtxHeadersStrong(){
-		$text = "# foo **bar  \nhello\n\nworld";
+		$text = "# foo **bar\n\nhello";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<h1>foo <strong>bar<br>hello</strong></h1><p>world</p>', $markdown->toHTML());
+		$this->assertEquals('<h1>foo <strong>bar</strong></h1><p>hello</p>', $markdown->toHTML());
 	}
 	
 	/**

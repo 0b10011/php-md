@@ -20,7 +20,6 @@
 			<group>official</group>
 			<group>em</group>
 			<group>strong</group>
-			<group>rule</group>
 			<group>link</group>
 			<group>inlineCode</group>
 			<group>atxHeader</group>

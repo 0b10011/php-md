@@ -110,6 +110,7 @@ class Tokenizer {
 	protected $states = array(
 		"start" => "start",
 		"textStart" => "textStart",
+		"textLineStart" => "textLineStart",
 		"text" => "text",
 		"indentedCode" => "indentedCode",
 		
@@ -308,8 +309,46 @@ class Tokenizer {
 			return;
 		}
 		
+		// Ignore leading whitespace
 		$this->consume(" ");
 		
+		$this->state = "textLineStart";
+	}
+	
+	protected function textLineStart(){
+		
+		// Consume a character
+		$ch = $this->consume();
+		
+		// Horizontal rules (---, ***)
+		if($ch==="-"||$ch==="*"){
+			
+			// Loop through line and consume $ch (ignoring spaces)
+			$consumed = 1;
+			$skipped = 0;
+			do {
+				$skipped += $this->consume(" ");
+				$consumed += $found = $this->consume($ch);
+			} while($found);
+			
+			// If at least 3 $ch were consumed and followed by at least one new line, add "rule" token
+			if($consumed>=3&&$this->match(" *\n")){
+				while($this->match(" *\n")){
+					$this->consume(" ");
+					$this->consume("\n");
+				}
+				$this->addToken("rule", $ch);
+				return;
+			}
+			
+			// Not found, back up to $ch
+			$backup = $skipped + $consumed - 1;
+			if($backup) $this->backup($backup);
+			unset($consumed, $skipped, $found);
+		}
+		
+		// Backup and move to text state
+		$this->backup();
 		$this->state = "text";
 	}
 	
@@ -339,6 +378,7 @@ class Tokenizer {
 			}
 			
 			$this->consume(" ");
+			$this->state = "textLineStart";
 			$this->addToken("newline");
 			return;
 		}
@@ -364,6 +404,7 @@ class Tokenizer {
 					return;
 				}
 				
+				$this->state = "textLineStart";
 				$this->addToken("linebreak");
 				$this->addToken("newline");
 				
@@ -1265,6 +1306,11 @@ class Parser {
 			return;
 		}
 		
+		if($token[0]==="rule"){
+			$this->appendElement("hr");
+			return;
+		}
+		
 		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
 	}
 	
@@ -1286,8 +1332,16 @@ class Parser {
 		
 		if($token[0]==="newline"){
 			$next = $this->next();
+			
+			// If next token is a newline, consume and switch to block state
 			if($next[0]==="newline"){
 				$this->consume();
+				$this->state = "block";
+				return;
+			}
+			
+			// If next token is a rule, switch to block state
+			if($next[0]==="rule"){
 				$this->state = "block";
 				return;
 			}

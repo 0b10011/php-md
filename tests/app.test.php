@@ -39,7 +39,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	 * @group rule
 	 */
 	public function testHorizontalRulesSpaces(){
-		$text = "foo\n\n- -  -\n\nbar";
+		$text = "foo\n\n - -  -\n\nbar";
 		$markdown = new Markdown($text);
 		$this->assertEquals('<p>foo</p><hr><p>bar</p>', $markdown->toHTML());
 	}
@@ -64,6 +64,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group rule
+	 * @group em
 	 */
 	public function testHorizontalRulesInvalid(){
 		$text = "foo\n\n-*-\n\nbar";

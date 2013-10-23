@@ -18,8 +18,6 @@
 			<group>codeblock</group>
 			<group>referencelinks</group>
 			<group>official</group>
-			<group>em</group>
-			<group>strong</group>
 			<group>link</group>
 			<group>inlineCode</group>
 			<group>atxHeader</group>

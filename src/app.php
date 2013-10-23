@@ -112,6 +112,7 @@ class Tokenizer {
 		"textStart" => "textStart",
 		"textLineStart" => "textLineStart",
 		"text" => "text",
+		"textAfterSpace" => "textAfterSpace",
 		"indentedCode" => "indentedCode",
 		
 		
@@ -349,7 +350,7 @@ class Tokenizer {
 		
 		// Backup and move to text state
 		$this->backup();
-		$this->state = "text";
+		$this->state = "textAfterSpace";
 	}
 	
 	protected function text(){
@@ -419,11 +420,56 @@ class Tokenizer {
 			}
 			
 			$this->addToken("character", $ch);
+			$this->state = "textAfterSpace";
+			return;
+		}
+		
+		if($ch==="*"||$ch==="_"){
+			$consumed = $this->consume($ch);
+			$type = $this->next() === " " ? "end" : "toggle";
+			if($consumed>2){
+				$this->position = $this->position - ($consumed - 2);
+				$consumed = 2;
+			}
+			if($consumed===2){
+				$this->addToken($type."Em", $ch);
+				$this->addToken($type."Strong", $ch.$ch);
+				return;
+			} elseif($consumed===1){
+				$this->addToken($type."Strong", $ch.$ch);
+				return;
+			}
+			$this->addToken($type."Em", $ch);
 			return;
 		}
 		
 		// Plain text, append as text
 		$this->addToken("character", $ch);
+	}
+	
+	protected function textAfterSpace(){
+		$ch = $this->consume();
+		$this->state = "text";
+		
+		if(($ch==="*"||$ch==="_")&&!$this->match("[ \n]")){
+			$consumed = $this->consume($ch);
+			if($consumed>2){
+				$this->position = $this->position - ($consumed - 2);
+				$consumed = 2;
+			}
+			if($consumed===2){
+				$this->addToken("startEm", $ch);
+				$this->addToken("startStrong", $ch.$ch);
+				return;
+			} elseif($consumed===1){
+				$this->addToken("startStrong", $ch.$ch);
+				return;
+			}
+			$this->addToken("startEm", $ch);
+			return;
+		}
+		
+		$this->backup();
 	}
 	
 	protected function indentedCode(){
@@ -1300,18 +1346,13 @@ class Parser {
 			$token[1] = null;
 		}
 		
-		if($token[0]==="character"){
-			$this->state = "paragraph";
-			$this->backup();
-			return;
-		}
-		
 		if($token[0]==="rule"){
 			$this->appendElement("hr");
 			return;
 		}
 		
-		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+		$this->state = "paragraph";
+		$this->backup();
 	}
 	
 	protected function paragraph(){
@@ -1353,6 +1394,60 @@ class Parser {
 		if($token[0]==="linebreak"){
 			$this->appendElement("br");
 			$this->consume(); // Consume newline
+			return;
+		}
+		
+		if($token[0]==="startEm"){
+			if(in_array("em", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->openElement("em");
+			return;
+		}
+		
+		if($token[0]==="endEm"){
+			if(!in_array("em", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->closeElement("em");
+			return;
+		}
+		
+		if($token[0]==="toggleEm"){
+			if(!in_array("em", $this->open_elements)){
+				$this->openElement("em");
+				return;
+			}
+			$this->closeElement("em");
+			return;
+		}
+		
+		if($token[0]==="startStrong"){
+			if(in_array("strong", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->openElement("strong");
+			return;
+		}
+		
+		if($token[0]==="endStrong"){
+			if(!in_array("strong", $this->open_elements)){
+				$this->appendText($token[1]);
+				return;
+			}
+			$this->closeElement("strong");
+			return;
+		}
+		
+		if($token[0]==="toggleStrong"){
+			if(!in_array("strong", $this->open_elements)){
+				$this->openElement("strong");
+				return;
+			}
+			$this->closeElement("strong");
 			return;
 		}
 		

@@ -443,6 +443,24 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch==="`"){
+			$this->backup();
+			$this->state = "startCode";
+			return;
+		}
+		
+		if($ch==="!"&&$this->match("\\[[^\\]\\n]*\\]\\([^\"\\)\\n]+(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
+			$this->state = "startImage";
+			$this->backup();
+			return;
+		}
+		
+		if($ch==="["&&$this->match("[^\\]\\n]+\\]\\([^\"\\)\\n]*(\"([^\"\\\\]+|\\\\\\\\|\\\\.)+\")?\\)")){
+			$this->state = "startLink";
+			$this->backup();
+			return;
+		}
+		
 		// Plain text, append as text
 		$this->addToken("character", $ch);
 	}
@@ -1007,6 +1025,7 @@ class Parser {
 		"block" => "block",
 		"paragraph" => "paragraph",
 		"inParagraph" => "inParagraph",
+		"inlineCode" => "inlineCode",
 		
 		
 		"data" => "data",
@@ -1448,6 +1467,74 @@ class Parser {
 				return;
 			}
 			$this->closeElement("strong");
+			return;
+		}
+		
+		if($token[0]==="startCode"){
+			$this->state = "inlineCode";
+			$this->openElement("code");
+			return;
+		}
+		
+		if($token[0]==="startLink"){
+			if(in_array("a", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
+			$this->openElement("a");
+			return;
+		}
+		
+		if($token[0]==="endLink"){
+			if(!in_array("a", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			$this->closeElement("a");
+			return;
+		}
+		
+		if($token[0]==="linkUrl"){
+			$this->setAttribute($this->getAncestor("a"), "href", $token[1]);
+			return;
+		}
+		
+		if($token[0]==="linkTitle"){
+			$this->setAttribute($this->getAncestor("a"), "title", $token[1]);
+			return;
+		}
+		
+		if($token[0]==="startImage"){
+			$this->in_image = true;
+			if(in_array("img", $this->open_elements)){
+				// Ignore
+				return;
+			}
+			if(!$this->inBlock()){
+				$this->openElement("p");
+			}
+			$this->appendElement("img");
+			$this->state = "inImage";
+			return;
+		}
+		
+		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
+	}
+	
+	protected function inlineCode(){
+		$token = $this->consume();
+		
+		if($token[0]==="character"){
+			$this->appendText($token[1]);
+			return;
+		}
+		
+		if($token[0]==="closeCode"){
+			$this->closeElement("code");
+			$this->state = "inParagraph";
 			return;
 		}
 		

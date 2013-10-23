@@ -263,14 +263,17 @@ class Tokenizer {
 	}
 	
 	protected function startOfLine(){
+		$reset = false;
 		if($this->only_super_blocks&&$this->sameLinePrefix($this->line_tokens, $this->line_tokens_last)){
 			$this->tokens = $this->saved_tokens;
+			$reset = true;
 		} else {
 			$this->saved_tokens = $this->tokens;
 			$this->only_super_blocks = true;
 		}
 		$this->line_tokens_last = $this->line_tokens;
 		$this->line_tokens = array();
+		return $reset;
 	}
 	
 	protected function newBlock(){
@@ -289,7 +292,10 @@ class Tokenizer {
 	}
 	
 	protected function hardLine(){
-		$this->startOfLine();
+		if($this->startOfLine()){
+			$this->state = "newBlock";
+			return;
+		}
 		
 		$this->addToken("newLine");
 		
@@ -297,7 +303,10 @@ class Tokenizer {
 	}
 	
 	protected function softLine(){
-		$this->startOfLine();
+		if($this->startOfLine()){
+			$this->state = "newBlock";
+			return;
+		}
 		
 		return $this->startLine(false, false);
 	}

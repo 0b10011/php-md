@@ -16,11 +16,13 @@ Developer-friendly markdown parser for PHP.
 # Using
 
 ```php
-// Include class
-require_once('/path/to/markdown/source/app.php');
+// If using composer, you're all set
+// If not, add the following path to your PSR-0 autoloader: /path/to/markdown/psr-0
+// Or include the class manually
+// require_once('/path/to/markdown/src/app.php');
 
 // Make `Markdown` an alias for `bfrohs\markdown\Markdown`
-use bfrohs\markdown\Markdown as Markdown;
+use bfrohs\markdown\Markdown;
 
 // Create a new Markdown object with the scope of 'p'
 $text = "Some string using *markdown*.";

@@ -25,7 +25,7 @@
 	},
 	"autoload": {
 		"psr-0": {
-			"bfrohs\\markdown": "src"
+			"bfrohs\\markdown": "psr-0"
 		}
 	}
 }

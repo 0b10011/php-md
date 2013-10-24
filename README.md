@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/bfrohs/php-md.png)](https://travis-ci.org/bfrohs/php-md)
+[![Build Status](https://travis-ci.org/bfrohs/php-md.png?branch=master)](https://travis-ci.org/bfrohs/php-md)
 
 **Important:** This is an *experiment* and may be changed, rebased, or trashed at any
 point. Use extreme caution before using this code.

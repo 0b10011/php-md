@@ -1,6 +1,6 @@
 <?php
 
-namespace bfrohs\phpmd;
+namespace bfrohs\markdown;
 
 require_once($GLOBALS['MARKDOWN_SOURCE']."/exceptions.php");
 

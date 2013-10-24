@@ -1,5 +1,5 @@
 {
-	"name": "bfrohs/phpmd",
+	"name": "bfrohs/markdown",
 	"type": "library",
 	"description": "WIP: Markdown parser for PHP",
 	"keywords": [
@@ -25,7 +25,7 @@
 	},
 	"autoload": {
 		"psr-0": {
-			"bfrohs\\phpmd": "src"
+			"bfrohs\\markdown": "src"
 		}
 	}
 }

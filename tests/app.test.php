@@ -1,6 +1,6 @@
 <?php
 
-use bfrohs\phpmd\Markdown as Markdown;
+use bfrohs\markdown\Markdown as Markdown;
 
 // Include array functions
 require_once($GLOBALS['MARKDOWN_SOURCE'].'/app.php');

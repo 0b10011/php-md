@@ -2,7 +2,13 @@
 
 namespace bfrohs\markdown;
 
-require_once(__DIR__."/exceptions.php");
+$file = __FILE__;
+if(is_link($file)){
+	$dir = dirname(realpath(readlink($file)));
+} else {
+	$dir = dirname($file);
+}
+require_once($dir."/exceptions.php");
 
 class Markdown {
 	

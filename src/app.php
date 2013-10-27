@@ -35,46 +35,71 @@ class Markdown {
 		throw(new RuntimeException("Cannot set any options yet, sorry! :("));
 	}
 	
+	/**
+	 * Converts a parse tree (starting from #ROOT) into HTML.
+	 * @return string Returns parse tree as HTML.
+	 */
 	public function toHTML(){
-		return $this->nodeToHTML($this->parse_tree);
+		return $this->nodesToHTML($this->parse_tree["children"]);
 	}
 	
-	protected function nodeToHTML($node = null){
+	/**
+	 * Converts array of nodes into HTML.
+	 * @param array $nodes
+	 * @return string Returns nodes as HTML.
+	 */
+	protected function nodesToHTML($nodes){
 		$html = "";
 		
-		$name = array_key_exists("name", $node) ? $node["name"] : null;
-		
-		$attributes = array_key_exists("attributes", $node) ? $node["attributes"] : null;
-		
-		$empty = array_key_exists("empty", $node) ? $node["empty"] : null;
-		
-		if($name!=="#ROOT"){
-			$node_attributes = "";
-			if($attributes){
-				ksort($attributes);
-				foreach($attributes as $attribute => $value){
-					$node_attributes .= ' '.$attribute.'="'.htmlspecialchars($value).'"';
-				}
+		foreach($nodes as $node){
+			if($node["name"]==="#TEXT"){
+				$html .= $this->escapeStringForHtml($node["value"]);
+			} else {
+				$html .= $this->nodeToHTML($node);
 			}
-			$html .= "<$name$node_attributes>";
-			unset($node_attributes);
 		}
 		
-		if($empty){
+		return $html;
+	}
+	
+	/**
+	 * Converts a single node into HTML.
+	 * @param array $node
+	 * @return string Returns node as HTML.
+	 */	
+	protected function nodeToHTML($node){
+		$html = "";
+		
+		$name = $node["name"];
+		
+		$attributes = $this->attributesToHTML($node["attributes"]);
+		
+		$html .= "<$name$attributes>";
+		
+		if($node["empty"]){
 			return $html;
 		}
 		
-		foreach($node["children"] as $child){
-			if($child["name"]==="#TEXT"){
-				$html .= $this->escapeStringForHtml($child["value"]);
-				continue;
-			}
-			
-			$html .= $this->nodeToHTML($child);
-		}
+		$html .= $this->nodesToHTML($node["children"]);
 		
-		if($name!=="#ROOT"){
-			$html .= "</$name>";
+		$html .= "</$name>";
+		
+		return $html;
+	}
+	
+	/**
+	 * Converts array of attributes and values into HTML.
+	 * @param array $attributes Array("attribute" => "value", ...)
+	 * @return string Returns attributes as HTML.
+	 */
+	protected function attributesToHTML($attributes){
+		$html = "";
+		
+		ksort($attributes);
+		foreach($attributes as $attribute => $value){
+			$escaped_value = htmlspecialchars($value);
+			
+			$html .= " $attribute=\"$escaped_value\"";
 		}
 		
 		return $html;

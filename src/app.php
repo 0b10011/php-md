@@ -647,25 +647,30 @@ class Tokenizer {
 		return $this->linkUrl($url.$ch);
 	}
 	
-	protected function linkTitle($title = ''){
-		$ch = $this->consume();
+	protected function linkTitle(){
+		$title = "";
 		
-		if($ch==="\\"){
-			$ch = $this->consume();
-			return $this->linkTitle($title.$ch);
-		}
-		
-		if($ch==='"'){
-			if($this->consume()!==")"){
-				throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
+		while($ch = $this->consume()){
+			
+			if($ch==="\\"){
+				$ch = $this->consume();
+				$title .= $ch;
+				continue;
 			}
-			$this->addToken("linkTitle", $title);
-			$this->state = "inLine";
-			$this->addToken("endLink");
-			return;
+			
+			if($ch==='"'){
+				if($this->consume()!==")"){
+					throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
+				}
+				$this->addToken("linkTitle", $title);
+				$this->state = "inLine";
+				$this->addToken("endLink");
+				return;
+			}
+			
+			$title .= $ch;
+			
 		}
-		
-		return $this->linkTitle($title.$ch);
 	}
 	
 	protected function startImage(){
@@ -735,25 +740,30 @@ class Tokenizer {
 		return $this->imageUrl($url.$ch);
 	}
 	
-	protected function imageTitle($title = ''){
-		$ch = $this->consume();
+	protected function imageTitle(){
+		$title = "";
 		
-		if($ch==="\\"){
-			$ch = $this->consume();
-			return $this->imageTitle($title.$ch);
-		}
-		
-		if($ch==='"'){
-			if($this->consume()!==")"){
-				throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
+		while($ch = $this->consume()){
+			
+			if($ch==="\\"){
+				$ch = $this->consume();
+				$title .= $ch;
+				continue;
 			}
-			$this->addToken("imageTitle", $title);
-			$this->state = "inLine";
-			$this->addToken("endImage");
-			return;
+			
+			if($ch==='"'){
+				if($this->consume()!==")"){
+					throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
+				}
+				$this->addToken("imageTitle", $title);
+				$this->state = "inLine";
+				$this->addToken("endImage");
+				return;
+			}
+			
+			$title .= $ch;
+			
 		}
-		
-		return $this->imageTitle($title.$ch);
 	}
 }
 

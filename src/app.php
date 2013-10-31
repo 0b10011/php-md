@@ -615,36 +615,40 @@ class Tokenizer {
 		$this->addToken("character", $ch);
 	}
 	
-	protected function linkUrl($url = ''){
-		$ch = $this->consume();
+	protected function linkUrl(){
+		$url = '';
 		
-		if($ch==="\\"){
-			$ch = $this->consume();
-			return $this->linkUrl($url.$ch);
+		while($ch = $this->consume()){
+			
+			if($ch==="\\"){
+				$ch = $this->consume();
+				$url .= $ch;
+				continue;
+			}
+			
+			if($this->match(" *\"")){
+				$this->consume(" ");
+				$this->consume(); // Consume "
+				$this->addToken("linkUrl", $url.$ch);
+				$this->state = "linkTitle";
+				return;
+			}
+			
+			if($ch===")"){ // Handle empty url
+				$this->backup();
+				$ch = "";
+			}
+			if($this->match(" *\)")){
+				$this->consume(" ");
+				$this->consume(); // Consume )
+				$this->addToken("linkUrl", $url.$ch);
+				$this->state = "inLine";
+				$this->addToken("endLink");
+				return;
+			}
+			
+			$url .= $ch;
 		}
-		
-		if($this->match(" *\"")){
-			$this->consume(" ");
-			$this->consume(); // Consume "
-			$this->addToken("linkUrl", $url.$ch);
-			$this->state = "linkTitle";
-			return;
-		}
-		
-		if($ch===")"){ // Handle empty url
-			$this->backup();
-			$ch = "";
-		}
-		if($this->match(" *\)")){
-			$this->consume(" ");
-			$this->consume(); // Consume )
-			$this->addToken("linkUrl", $url.$ch);
-			$this->state = "inLine";
-			$this->addToken("endLink");
-			return;
-		}
-		
-		return $this->linkUrl($url.$ch);
 	}
 	
 	protected function linkTitle(){

@@ -230,9 +230,9 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	public function testImage(){
-		$text = "foo ![bar](/hello/)";
+		$text = "foo ![bar](/hello-0/)";
 		$markdown = new Markdown($text);
-		$this->assertEquals('<p>foo <img alt="bar" src="/hello/"></p>', $markdown->toHTML());
+		$this->assertEquals('<p>foo <img alt="bar" src="/hello-0/"></p>', $markdown->toHTML());
 	}
 	
 	public function testImageNoAlt(){

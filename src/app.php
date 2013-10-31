@@ -618,7 +618,7 @@ class Tokenizer {
 	protected function linkUrl(){
 		$url = '';
 		
-		while($ch = $this->consume()){
+		while(($ch = $this->consume())!==null){
 			
 			if($ch==="\\"){
 				$ch = $this->consume();
@@ -654,7 +654,7 @@ class Tokenizer {
 	protected function linkTitle(){
 		$title = "";
 		
-		while($ch = $this->consume()){
+		while(($ch = $this->consume())!==null){
 			
 			if($ch==="\\"){
 				$ch = $this->consume();
@@ -719,7 +719,7 @@ class Tokenizer {
 	protected function imageUrl(){
 		$url = '';
 		
-		while($ch = $this->consume()){
+		while(($ch = $this->consume())!==null){
 			
 			if($ch==="\\"){
 				$ch = $this->consume();
@@ -751,7 +751,7 @@ class Tokenizer {
 	protected function imageTitle(){
 		$title = "";
 		
-		while($ch = $this->consume()){
+		while(($ch = $this->consume())!==null){
 			
 			if($ch==="\\"){
 				$ch = $this->consume();

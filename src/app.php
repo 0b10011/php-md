@@ -712,32 +712,36 @@ class Tokenizer {
 		return $this->imageAlt($alt.$ch);
 	}
 	
-	protected function imageUrl($url = ''){
-		$ch = $this->consume();
+	protected function imageUrl(){
+		$url = '';
 		
-		if($ch==="\\"){
-			$ch = $this->consume();
-			return $this->imageUrl($url.$ch);
+		while($ch = $this->consume()){
+			
+			if($ch==="\\"){
+				$ch = $this->consume();
+				$url .= $ch;
+				continue;
+			}
+			
+			if($this->match(" *\"")){
+				$this->consume(" ");
+				$this->consume(); // Consume "
+				$this->addToken("imageUrl", $url.$ch);
+				$this->state = "imageTitle";
+				return;
+			}
+			
+			if($this->match(" *\)")){
+				$this->consume(" ");
+				$this->consume(); // Consume )
+				$this->addToken("imageUrl", $url.$ch);
+				$this->state = "inLine";
+				$this->addToken("endImage");
+				return;
+			}
+			
+			$url .= $ch;
 		}
-		
-		if($this->match(" *\"")){
-			$this->consume(" ");
-			$this->consume(); // Consume "
-			$this->addToken("imageUrl", $url.$ch);
-			$this->state = "imageTitle";
-			return;
-		}
-		
-		if($this->match(" *\)")){
-			$this->consume(" ");
-			$this->consume(); // Consume )
-			$this->addToken("imageUrl", $url.$ch);
-			$this->state = "inLine";
-			$this->addToken("endImage");
-			return;
-		}
-		
-		return $this->imageUrl($url.$ch);
 	}
 	
 	protected function imageTitle(){

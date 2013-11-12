@@ -174,6 +174,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	/**
 	 * Dingus ignores any number of trailing spaces followed by any number of trailing #
 	 * @group atxHeader
+	 * @group atxHeaderTrailing
 	 */
 	public function testAtxHeadersFunky(){
 		$text = "# foo    ###\nbar";

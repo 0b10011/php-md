@@ -346,6 +346,13 @@ class Tokenizer {
 		// Consume a character
 		$ch = $this->consume();
 		
+		// Atx headers
+		if($ch==="#"){
+			$this->backup();
+			$this->state = "atxHeader";
+			return;
+		}
+		
 		// Horizontal rules (---, ***)
 		if($ch==="-"||$ch==="*"){
 			
@@ -823,7 +830,7 @@ class Tokenizer {
 		$this->consume(" ");
 		
 		$this->addToken("atxHeader", "$consumed");
-		$this->state = "afterSpace";
+		$this->state = "textAfterSpace";
 	}
 	
 	protected $code_backticks = null;
@@ -1382,12 +1389,20 @@ class Parser {
 		throw(new LogicException("Invalid token type `$token[0]` and value `$token[1]`"));
 	}
 	
+	protected $newlines_for_block = 2;
 	protected function block(){
 		$this->closeBlocks();
 		
 		$token = $this->consume();
 		if(!array_key_exists(1, $token)){
 			$token[1] = null;
+		}
+		
+		if($token[0]==="atxHeader"){
+			$this->openElement("h$token[1]");
+			$this->state = "inParagraph";
+			$this->newlines_for_block = 1;
+			return;
 		}
 		
 		if($token[0]==="rule"){
@@ -1428,6 +1443,13 @@ class Parser {
 			// If next token is a rule, switch to block state
 			if($next[0]==="rule"){
 				$this->state = "block";
+				return;
+			}
+			
+			// If only single newline should start new block, switch to block state
+			if($this->newlines_for_block===1){
+				$this->state = "block";
+				$this->newlines_for_block = 2;
 				return;
 			}
 			

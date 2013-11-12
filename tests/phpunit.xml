@@ -18,7 +18,7 @@
 			<group>codeblock</group>
 			<group>referencelinks</group>
 			<group>official</group>
-			<group>atxHeader</group>
+			<group>atxHeaderTrailing</group>
 			<group>blockquote</group>
 			<group>ol</group>
 			<group>ul</group>

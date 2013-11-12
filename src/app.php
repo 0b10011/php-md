@@ -141,7 +141,7 @@ class Tokenizer {
 		"indentedCode" => "indentedCode",
 		
 		
-		"newBlock" => "newBlock",
+		"startBlock" => "startBlock",
 		"hardLine" => "hardLine",
 		"softLine" => "softLine",
 		"inLine" => "inLine",
@@ -353,6 +353,25 @@ class Tokenizer {
 			return;
 		}
 		
+		if($ch===">"){
+			$level = 1;
+			do {
+				$this->consume(" "); // Ignore whitespace
+				$level += $matched = $this->consume(">");
+			} while($matched);
+			
+			if($this->next()==="\n"){
+				$this->state = "textStart";
+				return;
+			}
+			
+			for($i=0;$i<$level;$i++){
+				$this->addToken("blockquote");
+			}
+			
+			return;
+		}
+		
 		// Horizontal rules (---, ***)
 		if($ch==="-"||$ch==="*"){
 			
@@ -546,10 +565,10 @@ class Tokenizer {
 		$this->addToken("character", $ch);
 	}
 	
-	protected function newBlock(){
+	protected function startBlock(){
 		$this->startOfLine();
 		
-		$this->addToken("newBlock");
+		$this->addToken("startBlock");
 		$this->in_list = false;
 
 		// Ignore blank lines
@@ -563,7 +582,7 @@ class Tokenizer {
 	
 	protected function hardLine(){
 		if($this->startOfLine()){
-			$this->state = "newBlock";
+			$this->state = "startBlock";
 			return;
 		}
 		
@@ -574,7 +593,7 @@ class Tokenizer {
 	
 	protected function softLine(){
 		if($this->startOfLine()){
-			$this->state = "newBlock";
+			$this->state = "startBlock";
 			return;
 		}
 		
@@ -610,7 +629,7 @@ class Tokenizer {
 			// If at least 3 $ch were consumed and followed by at least one new line, add "rule" token
 			if($consumed>=3&&$this->next()==="\n"){
 				$this->addToken("rule", $ch);
-				$this->state = "newBlock";
+				$this->state = "startBlock";
 				$this->in_list = false;
 				return;
 			}
@@ -651,7 +670,7 @@ class Tokenizer {
 			} while($matched);
 			
 			if($this->next()==="\n"){
-				$this->state = "newBlock";
+				$this->state = "startBlock";
 				return;
 			}
 			
@@ -681,7 +700,7 @@ class Tokenizer {
 			while($this->match(" *\n")){
 				$this->consume(" ");
 				$this->consume("\n");
-				$this->state = "newBlock";
+				$this->state = "startBlock";
 			}
 			return;
 		}
@@ -1054,6 +1073,7 @@ class Parser {
 	protected $state = "start";
 	protected $states = array(
 		"start" => "start",
+		"startBlock" => "startBlock",
 		"block" => "block",
 		"paragraph" => "paragraph",
 		"inParagraph" => "inParagraph",
@@ -1382,7 +1402,7 @@ class Parser {
 				$next = $this->next();
 			} while($next[0]==="newline");
 			
-			$this->state = "block";
+			$this->state = "startBlock";
 			return;
 		}
 		
@@ -1390,9 +1410,13 @@ class Parser {
 	}
 	
 	protected $newlines_for_block = 2;
-	protected function block(){
+	protected function startBlock(){
 		$this->closeBlocks();
 		
+		$this->state = "block";
+		return $this->block();
+	}
+	protected function block(){
 		$token = $this->consume();
 		if(!array_key_exists(1, $token)){
 			$token[1] = null;
@@ -1402,6 +1426,17 @@ class Parser {
 			$this->openElement("h$token[1]");
 			$this->state = "inParagraph";
 			$this->newlines_for_block = 1;
+			return;
+		}
+		
+		if($token[0]==="blockquote"){
+			$last_element = $this->getLastElement();
+			if($last_element&&$last_element["name"]==="blockquote"){
+				$this->reopenLastElement();
+				return;
+			}
+			
+			$this->openElement("blockquote");
 			return;
 		}
 		
@@ -1436,19 +1471,19 @@ class Parser {
 			// If next token is a newline, consume and switch to block state
 			if($next[0]==="newline"){
 				$this->consume();
-				$this->state = "block";
+				$this->state = "startBlock";
 				return;
 			}
 			
 			// If next token is a rule, switch to block state
 			if($next[0]==="rule"){
-				$this->state = "block";
+				$this->state = "startBlock";
 				return;
 			}
 			
 			// If only single newline should start new block, switch to block state
 			if($this->newlines_for_block===1){
-				$this->state = "block";
+				$this->state = "startBlock";
 				$this->newlines_for_block = 2;
 				return;
 			}

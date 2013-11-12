@@ -632,6 +632,7 @@ class TokenizerTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group blockquote
+	 * @group ul
 	 */
 	public function testBlockquoteList(){
 		$text = "> - foo\n\t\n>\tfoo";

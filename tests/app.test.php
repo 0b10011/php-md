@@ -259,6 +259,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group ul
+	 * @group ulWrapped
 	 */
 	public function testListWrapped(){
 		$text = "* foo\n\tbar";
@@ -268,6 +269,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group ul
+	 * @group ulContinued
 	 */
 	public function testListMultipleParagraphs(){
 		$text = "* foo\n\n\tbar";
@@ -277,6 +279,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group ul
+	 * @group ulNested
 	 */
 	public function testListNested(){
 		$text = "* foo\n\t* bar\n\t* baz";
@@ -286,6 +289,7 @@ class MarkdownTest extends PHPUnit_Framework_TestCase {
 	
 	/**
 	 * @group ul
+	 * @group ulNested
 	 */
 	public function testListNestedDeep(){
 		$text = "* foo\n\t* bar\n\t\t* baz";
@@ -633,6 +637,7 @@ class TokenizerTest extends PHPUnit_Framework_TestCase {
 	/**
 	 * @group blockquote
 	 * @group ul
+	 * @group ulNested
 	 */
 	public function testBlockquoteList(){
 		$text = "> - foo\n\t\n>\tfoo";

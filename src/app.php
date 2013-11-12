@@ -135,6 +135,7 @@ class Tokenizer {
 	protected $states = array(
 		"start" => "start",
 		"textStart" => "textStart",
+		"textStartNext" => "textStartNext",
 		"textLineStart" => "textLineStart",
 		"text" => "text",
 		"textAfterSpace" => "textAfterSpace",
@@ -338,10 +339,14 @@ class Tokenizer {
 		// Ignore leading whitespace
 		$this->consume(" ");
 		
-		$this->state = "textLineStart";
+		$this->state = "textStartNext";
 	}
 	
-	protected function textLineStart(){
+	protected function textStartNext(){
+		return $this->textLineStart(true);
+	}
+	
+	protected function textLineStart($new_block = false){
 		
 		// Consume a character
 		$ch = $this->consume();
@@ -397,6 +402,22 @@ class Tokenizer {
 			$backup = $skipped + $consumed - 1;
 			if($backup) $this->backup($backup);
 			unset($consumed, $skipped, $found);
+		}
+		
+		if(($ch==="*"||$ch==="-"||$ch==="+")&&$this->next()===" "){
+			if($new_block||$this->in_list){
+				$this->backup();
+				$this->state = "ul";
+				return;
+			}
+		}
+
+		if(preg_match("/\d/", $ch)&&$this->match("\d*\. ")){
+			if($new_block||$this->in_list){
+				$this->backup();
+				$this->state = "ol";
+				return;
+			}
 		}
 		
 		// Backup and move to text state
@@ -804,7 +825,7 @@ class Tokenizer {
 		} else {
 			$this->addToken("ul", $ch);
 		}
-		$this->state = "afterSpace";
+		$this->state = "textAfterSpace";
 		$this->in_list = true;
 	}
 	
@@ -829,7 +850,7 @@ class Tokenizer {
 		} else {
 			$this->addToken("ol", $number);
 		}
-		$this->state = "afterSpace";
+		$this->state = "textAfterSpace";
 		$this->in_list = true;
 	}
 	
@@ -1450,6 +1471,68 @@ class Parser {
 	}
 	
 	protected function paragraph(){
+		$token = $this->consume();
+		
+		if($token[0]==="ul"||$token[0]==="ulParagraph"){
+			if(!in_array("ul", $this->open_elements)){
+				$last_element = $this->getLastElement();
+				if($last_element&&$last_element["name"]==="ul"){
+					$this->reopenLastElement();
+				} else {
+					$this->openElement("ul");
+				}
+			}
+//			if($increase_list_level){
+//				if($this->current["name"]!=="li"){
+//					$last_element = $this->getLastElement();
+//					if($last_element&&$last_element["name"]==="li"){
+//						$this->reopenLastElement();
+//					} elseif($this->inBlock()){
+//						do {
+//							$this->closeBlock();
+//						} while($this->current["name"]!=="li"&&$this->inBlock());
+//					}
+//					if($this->current["name"]!=="li"){
+//						$this->openElement("ul");
+//						$this->openElement("li");
+//					}
+//				}
+//				$this->openElement("ul");
+//			} elseif(in_array("li", $this->open_elements)){
+//				$this->closeElement("li");
+//			}
+			$this->openElement("li");
+			if($token[0]==="ulParagraph"){
+				$this->openElement("p");
+			}
+			$this->newlines_for_block = 1;
+			$this->state = "inParagraph";
+			return;
+		}
+		
+		if($token[0]==="ol"||$token[0]==="olParagraph"){
+			if(!in_array("ol", $this->open_elements)){
+				$last_element = $this->getLastElement();
+				if($last_element&&$last_element["name"]==="ol"){
+					$this->reopenLastElement();
+				} else {
+					$this->openElement("ol");
+				}
+			}
+			if(in_array("li", $this->open_elements)){
+				$this->closeElement("li");
+			}
+			$this->openElement("li");
+			if($token[0]==="olParagraph"){
+				$this->openElement("p");
+			}
+			$this->state = "inParagraph";
+			$this->newlines_for_block = 1;
+			return;
+		}
+		
+		$this->backup();
+		
 		$this->openElement("p");
 		$this->state = "inParagraph";
 	}

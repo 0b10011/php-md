@@ -19,8 +19,9 @@
 			<group>referencelinks</group>
 			<group>official</group>
 			<group>atxHeaderTrailing</group>
-			<group>ol</group>
-			<group>ul</group>
+			<group>ulNested</group>
+			<group>ulContinued</group>
+			<group>ulWrapped</group>
 		</exclude>
 	</groups>
 	

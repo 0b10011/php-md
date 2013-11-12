@@ -142,11 +142,11 @@ class Tokenizer {
 		"indentedCode" => "indentedCode",
 		
 		
-		"startBlock" => "startBlock",
-		"hardLine" => "hardLine",
-		"softLine" => "softLine",
-		"inLine" => "inLine",
-		"afterSpace" => "afterSpace",
+//		"startBlock" => "startBlock",
+//		"hardLine" => "hardLine",
+//		"softLine" => "softLine",
+//		"inLine" => "inLine",
+//		"afterSpace" => "afterSpace",
 		"startCode" => "startCode",
 		"inCode" => "inCode",
 		"atxHeader" => "atxHeader",
@@ -587,6 +587,7 @@ class Tokenizer {
 	}
 	
 	protected function startBlock(){
+		throw(new LogicException("startBlock is not valid"));
 		$this->startOfLine();
 		
 		$this->addToken("startBlock");
@@ -967,7 +968,7 @@ class Tokenizer {
 			$this->consume(" ");
 			$this->consume(); // Consume )
 			$this->addToken("linkUrl", $url.$ch);
-			$this->state = "inLine";
+			$this->state = "text";
 			$this->addToken("endLink");
 			return;
 		}
@@ -988,7 +989,7 @@ class Tokenizer {
 				throw(new BadMethodCallException("In linkTitle state, but ) not found after \""));
 			}
 			$this->addToken("linkTitle", $title);
-			$this->state = "inLine";
+			$this->state = "text";
 			$this->addToken("endLink");
 			return;
 		}
@@ -1055,7 +1056,7 @@ class Tokenizer {
 			$this->consume(" ");
 			$this->consume(); // Consume )
 			$this->addToken("imageUrl", $url.$ch);
-			$this->state = "inLine";
+			$this->state = "text";
 			$this->addToken("endImage");
 			return;
 		}
@@ -1076,7 +1077,7 @@ class Tokenizer {
 				throw(new BadMethodCallException("In imageTitle state, but ) not found after \""));
 			}
 			$this->addToken("imageTitle", $title);
-			$this->state = "inLine";
+			$this->state = "text";
 			$this->addToken("endImage");
 			return;
 		}

@@ -17,11 +17,7 @@
 			<group>autolinks</group>
 			<group>codeblock</group>
 			<group>referencelinks</group>
-			<group>official</group>
 			<group>atxHeaderTrailing</group>
-			<group>ulNested</group>
-			<group>ulContinued</group>
-			<group>ulWrapped</group>
 		</exclude>
 	</groups>
 	
